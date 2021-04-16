@@ -5,8 +5,9 @@
 ### known elk calving patterns                ###
 ###                                           ###
 ### Uses general method from Marchand et al.  ###
-### 2021 with a few important differences:    ###
+### 2021                                      ###
 ###                                           ###
+### Important diffs from Marchand et al:      ###
 ### - Uses only the RT100 and distance btwn   ###
 ###   pts variables (no accelerometer data)   ###
 ### - Parturition window is 5 days with RT100 ###
@@ -14,15 +15,13 @@
 ###   tend to move their calves around within ###
 ###   a small area over several days          ###
 ###                                           ###
-### Accuracy is ~ 65%                         ###
-###                                           ###
 #################################################
 
 library(tidyverse)
 library(sf)
 
 # Load elk data
-dat <- readRDS('vita_elk_vectronic_feb_2019-march_2021_cleaned.rds')
+dat <- readRDS('input/vita_elk_vectronic_feb_2019-march_2021_cleaned.rds')
 
 # Reproject into UTMs and add as column to data frame
 utm_conv <- dat %>% st_transform(crs = 26914) 
@@ -54,9 +53,6 @@ calv_dates <- data.frame(
          'ER_E_16_2020', 'ER_E_25_2020', 'ER_E_19_2020', 'ER_E_15_2020'),
   calved = c(135, 141, 143, 144, 151, 153, 154, 159, 159, 161, 162, 163,
              160, 144, 174, 148))
-  # Adjusted dates based on graphs
-  # calved = c(137, 141, 145, 144, 149, 155, 156, 159, 159, 161, 164, 161,
-  #            162, 142, 174, 148))
 
 ### Setting up data:
 
@@ -164,68 +160,128 @@ ggplot(rf_dat, aes(x = days_to_calv, y = dist_last_pt, group = id, col = id)) +
   geom_smooth(method = 'loess') + 
   facet_wrap(~id)
 
-### Fitting model:
+### Fitting model: Loop through model fitting x 100 to get confidence intervals
+###                around calving date estimates
 
 # 4 - Run RF model for training data (parturition date ~ RT100 + distance)
 
-# Perform down-sampling
-dsample_recipe <- recipes::recipe(parturition~., data = rf_dat) %>% 
-  themis::step_downsample(parturition, under_ratio = 1, id = id)
-# Prep
-dsample_prep <- recipes::prep(dsample_recipe)
-# Juice (return pre-processed data)
-dsample_rf_dat <- as.data.frame(recipes::juice(dsample_prep))
-# Model (without distance variable for now)
-rf_mod <- randomForest::randomForest(parturition ~ RT100, data = dsample_rf_dat)
-res <- as.data.frame(rfPermute::confusionMatrix(rf_mod, threshold=0.5))
+# Initialize iterations and data frame for results
+est_calv_dates <- data.frame()
+iter <- 0
 
-# 5 - Calculate probability of each training data point falling within the 
-#     parturition period using predict, type = probability; this returns
-#     a two-column matrix with the probability of each location point belonging
-#     to either time period (parturition/not)
+# Initialize loop
+repeat{
+  
+  iter <- iter + 1
+  print(iter)
+  
+  # Perform down-sampling
+  dsample_recipe <- recipes::recipe(parturition~., data = rf_dat) %>% 
+    themis::step_downsample(parturition, under_ratio = 1, id = id)
+  # Prep
+  dsample_prep <- recipes::prep(dsample_recipe)
+  # Juice (return pre-processed data)
+  dsample_rf_dat <- as.data.frame(recipes::juice(dsample_prep))
+  # Model (without distance variable for now)
+  rf_mod <- randomForest::randomForest(parturition ~ RT100, data = dsample_rf_dat)
+  res <- as.data.frame(rfPermute::confusionMatrix(rf_mod, threshold=0.5))
+  
+  # 5 - Calculate probability of each training data point falling within the 
+  #     parturition period using predict, type = probability; this returns
+  #     a two-column matrix with the probability of each location point belonging
+  #     to either time period (parturition/not)
+  
+  rf_train_results <- rf_dat %>%
+    mutate(part_prob = predict(rf_mod, newdata = rf_dat, type = 'prob')[,2])
+  
+  ### Estimating parturition dates:
+  
+  # 6 - Set threshold as mean of parturition = T probabilities in training 
+  #     data
+  
+  thresh <- quantile( 
+    rf_train_results[rf_train_results$parturition == 'yes' ,]$part_prob, probs = 0.5, na.rm = T)
+  
+  # 6 - Calculate probability of each testing data point falling within the 
+  #     parturition period using the RF model
+  
+  # Join data frame for elk not included in training data
+  rf_test_dat <- dat_recurse_calving %>%
+    select(id, RT100, time_lmt) %>%
+    left_join(distance_by_day, by = c('id', 'time_lmt')) %>%
+    # Remove elk already in training set
+    filter(!id %in% unique(rf_dat$id))
+  
+  # 7 - Use zoo::rollapply to calculate mean probability of parturition within 
+  #     week-long moving window in training set (known elk probability of calving 
+  #     remains high for approximately 5 days)
+  
+  # Predict probability of parturition
+  rf_results <- rf_test_dat %>%
+    mutate(part_prob = 
+             predict(rf_mod, newdata = rf_test_dat, type = 'prob')[,2]) %>%
+    mutate(part_prob_roll = 
+             zoo::rollapply(part_prob, width = 120, mean, fill = T)) %>%
+    # filter probabilities greater than threshold
+    filter(part_prob_roll != 1) %>%
+    # Add day col
+    mutate(day = lubridate::yday(time_lmt)) %>%
+    # factor ID column
+    mutate(id = factor(id))
+  
+  # 8 - If rolling window mean > threshold, identify as probable parturient and 
+  #     define predicted parturition date/time as peak of smoothed curve;
+  #     If rolling window mean < threshold for an individual's entire data, 
+  #     identify that individual as non-parturient
+  
+  # Plot the probability of parturition for training elk
+  rf_test_plot <- ggplot(rf_results, 
+                         aes(x = day, y = part_prob_roll, group = id, col = id)) +
+    scale_colour_viridis_d() +
+    geom_hline(yintercept = thresh, linetype = 'dashed') +
+    geom_line() + 
+    geom_smooth(method = 'loess', span = 0.5) + 
+    facet_wrap(~id)
+  
+  # Create data frame of ids by plot panel for joining
+  panel_IDs <- data.frame(PANEL = factor(seq(1, 18, 1)), id = levels(rf_results$id))
+  
+  # Create a ggplot build object to get maximum of smoothed line
+  rf_test_build <- ggplot_build(rf_test_plot)
+  
+  # Make table of possible calving dates by ID
+  x_at_max_y <- ggplot_build(rf_test_plot)$data[[3]] %>%
+    left_join(panel_IDs, by = 'PANEL') %>%
+    group_by(PANEL) %>%
+    # Subset Julian days between May 15 and July 20 to get rid of edge effects
+    filter(x > 135 & x < 201) %>%
+    filter(y == max(y)) %>%
+    # Add column for iteration
+    mutate(iteration = iter, accuracy_threshold = thresh)
+  
+  # Bind together results from iteration
+  est_calv_dates <- rbind(est_calv_dates, x_at_max_y)
+  
+  # Break loop after 100 iterations
+  if(iter == 100) break
+  
+}
 
-rf_train_results <- rf_dat %>%
-  mutate(part_prob = predict(rf_mod, newdata = rf_dat, type = 'prob')[,2])
+# 10 - Join predicted parturition dates with known parturition dates, then
+#      visualize the data and save
 
-### Estimating parturition dates:
-
-# 6 - Set threshold as 1% quantile of parturition = T probabilities in training 
-#     data
-
-thresh <- quantile( 
-  rf_dat[rf_dat$parturition == 'yes' ,]$part_prob, probs = 0.1, na.rm = T)
-
-# 6 - Calculate probability of each testing data point falling within the 
-#     parturition period using the RF model
-
-# Join data frame for elk not included in training data
-rf_test_dat <- dat_recurse_calving %>%
-  select(id, RT100, time_lmt) %>%
-  left_join(distance_by_day, by = c('id', 'time_lmt')) %>%
-  # Remove elk already in training set
-  filter(!id %in% unique(rf_dat$id))
-
-# 7 - Use zoo::rollapply to calculate mean probability of parturition within 
-#     week-long moving window in training set (known elk probability of calving 
-#     remains high for approximately 5 days)
-
-# Predict probability of parturition
-rf_results <- rf_test_dat %>%
-  mutate(part_prob = 
-           predict(rf_mod, newdata = rf_test_dat, type = 'prob')[,2]) %>%
-  mutate(part_prob_roll = 
-           zoo::rollapply(part_prob, width = 120, mean, fill = T)) %>%
-  # filter probabilities greater than threshold
-  filter(part_prob_roll != 1) %>%
-  # Add day col
-  mutate(day = lubridate::yday(time_lmt)) %>%
-  # factor ID column
-  mutate(id = factor(id))
-
-# 8 - If rolling window mean > threshold, identify as probable parturient and 
-#     define predicted parturition date/time as peak of smoothed curve;
-#     If rolling window mean < threshold for an individual's entire data, 
-#     identify that individual as non-parturient
+# Join together known and predicted calving dates
+final_calv_dates <- est_calv_dates %>%
+  group_by(id) %>%
+  # Get mean calving date and confidence intervals by group
+  summarize(calved = mean(x), stdev = sd(x), iterations = n()) %>%
+  mutate(lower_95 = calved - (stdev/sqrt(iterations)) * 1.96,
+         upper_95 = calved + (stdev/sqrt(iterations)) * 1.96) %>%
+  # Round the calving date and add column indicating prediction
+  mutate(calved = round(calved, digits = 0), predicted = 'yes') %>%
+  plyr::rbind.fill(calv_dates) %>%
+  mutate(predicted = replace_na(predicted, 'no')) %>%
+  rename('animal_ID' = id)
 
 # Visualize the parturition dates for the known elk
 ggplot(rf_train_results, 
@@ -239,45 +295,15 @@ ggplot(rf_train_results,
   geom_smooth(method = 'loess') + 
   facet_wrap(~id)
 
-# Plot the probability of parturition for training elk
-rf_test_plot <- ggplot(rf_results, 
-                       aes(x = day, y = part_prob_roll, group = id, col = id)) +
-  scale_colour_viridis_d() +
-  geom_hline(yintercept = thresh, linetype = 'dashed') +
-  geom_line() + 
-  geom_smooth(method = 'loess', span = 0.5) + 
-  facet_wrap(~id)
-
-# Create data frame of ids by plot panel for joining
-panel_IDs <- data.frame(PANEL = factor(seq(1, 18, 1)), id = levels(rf_results$id))
-
-# Create a ggplot build object to get maximum of smoothed line
-rf_test_build <- ggplot_build(rf_test_plot)
-
-# Make table of possible calving dates by ID
-x_at_max_y <- ggplot_build(rf_test_plot)$data[[3]] %>%
-  left_join(panel_IDs, by = 'PANEL') %>%
-  group_by(PANEL) %>%
-  # Subset Julian days between May 15 and July 20 to get rid of edge effects
-  filter(x > 135 & x < 201) %>%
-  filter(y == max(y))
-
-# Visualize the possible parturition dates for the unknown elk
+# Create new data for predicted elk only...
+test_plot_elk <- final_calv_dates %>%
+  na.omit() %>%
+  rename('id' = animal_ID)
+# and visualize the possible parturition dates for the unknown elk with 95% CIs
 rf_test_plot + 
-  geom_vline(data = x_at_max_y, aes(xintercept = x))
+  geom_vline(data = test_plot_elk, aes(xintercept = lower_95), linetype = 'dashed') +
+  geom_vline(data = test_plot_elk, aes(xintercept = upper_95), linetype = 'dashed') 
 
-# 9 - Join predicted parturition dates with known parturition dates and save
-
-# Join together known and predicted calving dates
-final_calv_dates <- x_at_max_y %>%
-  ungroup() %>%
-  mutate(x = round(x, digits = 0), predicted = 'yes') %>%
-  rename('calved' = x) %>%
-  select(id, calved, predicted) %>%
-  plyr::rbind.fill(calv_dates) %>%
-  mutate(predicted = replace_na(predicted, 'no')) %>%
-  rename('animal_ID' = id)
-
-# Save
+# Save calving dates
 saveRDS(final_calv_dates, 'output/calving_dates.rds')
 
