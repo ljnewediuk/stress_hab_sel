@@ -1,52 +1,81 @@
 
+#################################################
+###                                           ###
+### Fit models:                               ###
+### - Step length by pre- and post- calving   ###
+###   according to GC level                   ###
+### - Cover and crop habitats pre- and post-  ###
+###   calving according to GC levels          ###
+###                                           ###
+#################################################
+
 library(sf)
 library(tidyverse)
 library(amt)
+library(glmmTMB)
 
-# Make track
-trk <- mk_track(all_bursts, 
-                .x=X, .y=Y, .t=dat_time, id=animal_ID, cort_ng_g, period,
-                crs = sp::CRS("+init=epsg:26914"))
+# Load data
+model_dat <- readRDS('output/model_dat.rds')
 
-stps <- track_resample(trk, rate=hours(2), tolerance=minutes(30)) %>%
-  # Filter to bursts with at least 3 consecutive points (required to calculate TA)
-  filter_min_n_burst(min_n=3) %>% 
-  steps_by_burst(keep_cols='start') %>% 
-  random_steps(n=9) %>%
-  group_by(id) %>%
-  mutate(log_sl_ = log(sl_ + 1),
-         cort_ng_g_sc = scale(cort_ng_g))
-
-
-# Set max iterations to 10,000 to aid convergence
+# Set max iterations to 10^15 to aid convergence
 glmmTMBControl(optCtrl=list(iter.max=1e15,eval.max=1e15))
 
-# Set up model but don't fit
-pop_model <- glmmTMB(case_ ~ log_sl_:cort_ng_g_sc:period + log_sl_ +
-                       (1 | step_id_) + 
-                       (0 + cort_ng_g_sc | id), # Random effects of step-level density on selection
-                     family=poisson(), 
-                     data = stps, doFit=FALSE)
+# Define covariates for models
+# Step length model
+sl_covs <- c('log_sl_:cort_ng_g_sc:period', 'log_sl_:period', 'log_sl_',
+             '(1 | step_id_)', '(0 + cort_ng_g_sc | id)')
+# Habitat model
+hab_covs <- c('cort_ng_g_sc:cover:period', 'cort_ng_g_sc:crop:period', 
+              'cover:period', 'crop:period',
+              '(1 | step_id_)', '(0 + cort_ng_g_sc + cover + crop | id)')
 
-# Set variance of random intercept to 10^6
-pop_model$parameters$theta[1] <- log(1e6)
-nvar_parm <- length(pop_model$parameters$theta)
-pop_model$mapArg <- list(theta = factor(c(NA, 1:(nvar_parm - 1))))
+# Run models
+for(i in c('hab', 'sl')) {
+  model_covs <- get(paste(i, 'covs', sep = '_'))
+  # Set up model without fitting
+  model_form <- glmmTMB(reformulate(model_covs, response = 'case_'),
+                      family=poisson(), 
+                      data = stps, doFit=FALSE)
+  # Set variance of random intercept to 10^6
+  model_form$parameters$theta[1] <- log(1e6)
+  nvar_parm <- length(model_form$parameters$theta)
+  model_form$mapArg <- list(theta = factor(c(NA, 1:(nvar_parm - 1))))
+  # Fit model using large fixed variance
+  model_fit <- glmmTMB:::fitTMB(model_form)
+  # Assign
+  assign(paste(i, 'model', sep = '_'), model_fit)
+}
 
-# Fit model using large fixed variance
-pop_mod <- glmmTMB:::fitTMB(pop_model)
-
-
-stps_summ <- stps %>%
+# Plot step length by cort
+stps_summ <- model_dat %>%
   as.data.frame() %>%
+  ungroup() %>%
   filter(case_ == TRUE) %>%
-  group_by(id, cort_ng_g) %>%
+  # Summarize mean step length at each cort value by period
+  group_by(id, cort_ng_g, period) %>%
   summarize(mean_sl = mean(sl_, na.rm = T))
-
-ggplot(stps_summ, aes(x = cort_ng_g, y = log(mean_sl))) + 
+# Plot
+ggplot(stps_summ, aes(x = cort_ng_g, y = log(mean_sl), col = period)) + 
   geom_point() +
   geom_smooth(method = 'lm')
 
+# Plot habitat model
+tidy_hab_model <- broom.mixed::tidy(hab_model) %>%
+  # Get confidence intervals
+  mutate(lower = estimate - std.error*1.96,
+         upper = estimate + std.error*1.96) %>%
+  # Filter out unneeded coefficients
+  filter(! term == '(Intercept)') %>%
+  filter(! effect == 'ran_pars')
+# Plot
+ggplot(tidy_hab_model, aes(x = term, y = estimate)) +
+  geom_hline(yintercept = 0, linetype = 'dashed') +
+  geom_point() +
+  geom_errorbar(aes(ymin = lower, ymax = upper)) + 
+  theme(axis.text.x = element_text(angle = 45))
 
+# Save model outputs
+saveRDS(hab_model, 'output/hab_model_results.rds')
+saveRDS(sl_model, 'output/sl_model_results.rds')
 
 

@@ -1,4 +1,17 @@
 
+#################################################
+###                                           ###
+### Join hormone data with location data      ###
+### from previous 18 hours                    ###
+###                                           ###
+### Huber et al. 2003 JWM found that mean     ###
+### time for peak cort after ACTH challenge   ###
+### is 18 hours                               ###
+###                                           ###
+### Data are saved for extracting land cover  ###
+###                                           ###
+#################################################
+
 library(sf)
 library(tidyverse)
 
@@ -32,13 +45,14 @@ for(i in 1: nrow(hc_dat)) {
       if(length(row_ind > 0)) break
     }
   }
-  # Extract rows of burst up to 19 hours before sample
+  # Extract rows of burst up to 18 hours before sample
   row_burst <- loc_dat %>%
     filter(animal_ID == hc_dat[i ,]$animal_ID &
-             time_lmt %in% seq(loc_dat[row_ind ,]$time_lmt - lubridate::hours(19), 
+             time_lmt %in% seq(loc_dat[row_ind ,]$time_lmt - lubridate::hours(18), 
                                loc_dat[row_ind ,]$time_lmt, by = '30 min')) %>%
     # Add columns for hormones and parturition
     mutate(cort_ng_g = hc_dat[i ,]$cort_ng_g,
+           stress_resp = hc_dat[i ,]$stress_resp,
            t3_ng_g = hc_dat[i ,]$t3_ng_g,
            d_to_calv = hc_dat[i ,]$d_to_calv,
            period = hc_dat[i ,]$period) %>%
@@ -50,11 +64,10 @@ for(i in 1: nrow(hc_dat)) {
   
 }
 
-# Get X any Y cols
+# Keep X and Y cols
 all_bursts <- all_bursts %>%
   cbind(st_coordinates(all_bursts))
 
-# Save data for extracting land cover
-
-buffered_bursts <- st_buffer(all_bursts, dist = 100) # Extract lc at buffers
+# Save stress/loc data for extracting land cover
+saveRDS(all_bursts, 'output/stress_dat.rds')
 
