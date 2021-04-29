@@ -39,11 +39,13 @@ for(i in c('crop', 'cover')) {
   hab_rast[hab_rast > 1] <- 0
   # Buffer values within 250 m buffer
   focal_buffer <- focalWeight(hab_rast, d = 125, type = 'circle')
-  buffered_raster <- focal(hab_rast, focal_buffer, na.rm = T, pad = T) 
+  buffered_rast <- focal(hab_rast, focal_buffer, na.rm = T, pad = T) 
   # Name values (either crop or cover)
-  names(buffered_raster) <- i
+  names(buffered_rast) <- paste(i, 'prop', sep = '_')
+  names(hab_rast) <- i
   # Return raster
-  assign(paste(i, 'raster', sep = '_'), buffered_raster)
+  assign(paste(i, 'prop_raster', sep = '_'), buffered_rast)
+  assign(paste(i, 'binary_raster', sep = '_'), hab_rast)
 }
 
 # Make track
@@ -60,8 +62,10 @@ stps <- track_resample(trk, rate=hours(2), tolerance=minutes(30)) %>%
   steps_by_burst(keep_cols = 'start') %>% 
   random_steps(n = 10) %>%
   # Extract land cover
-  extract_covariates(cover_raster, where = 'end') %>%
-  extract_covariates(crop_raster, where = 'end') %>%
+  extract_covariates(cover_prop_raster, where = 'end') %>%
+  extract_covariates(crop_prop_raster, where = 'end') %>%
+  extract_covariates(cover_binary_raster, where = 'end') %>%
+  extract_covariates(crop_binary_raster, where = 'end') %>%
   group_by(id) %>%
   # Scale cort by ID
   mutate(log_sl_ = log(sl_ + 1),
