@@ -16,7 +16,13 @@ library(glmmTMB)
 
 # Load data
 model_dat <- readRDS('output/model_dat.rds') %>%
-  na.omit()
+  na.omit() %>%
+  # Factor pre- and post-calving periods
+  mutate(period = factor(period, 
+                         levels = c('pre_calv', 'post_calv'))) %>%
+  # Filter out elk with only one or two GC samples
+  filter(! id %in% c('ER_E_31', 'ER_E_20'))
+  
 
 # Set max iterations to 10^15 to aid convergence
 glmmTMBControl(optCtrl=list(iter.max=1e15,eval.max=1e15))
@@ -34,20 +40,22 @@ crop_covs <- c('cort_ng_g_sc:crop:period', 'cort_ng_g_sc:crop',
                 'crop:period', 'crop',
                 '(1 | step_id_)', '(0 + cort_ng_g_sc + crop | id)')
 
-hab_covs <- c('crop', 'cover', 'crop:period', 'cover:period',
+hab_covs <- c('crop', 'cover',
               '(1 | step_id_)', '(0 + cover + crop | id)')
 
 # Run models
 for(i in c('crop', 'cover', 'sl', 'hab')) {
   model_covs <- get(paste(i, 'covs', sep = '_'))
+  # Set number of random parameters for mapping
+  nvar_parm <- ifelse(i %in% c('crop', 'cover', 'hab'), 3, 1)
   # Set up model without fitting
-  model_form <- glmmTMB(reformulate(model_covs, response = 'case_'),
-                      family=poisson(), 
-                      data = model_dat, doFit=FALSE)
+  model_form <- suppressWarnings(
+    glmmTMB(reformulate(model_covs, response = 'case_'),
+                      family = poisson(), 
+                      map = list(theta = factor(c(NA, 1:nvar_parm))),
+                      data = model_dat, doFit = F))
   # Set variance of random intercept to 10^6
   model_form$parameters$theta[1] <- log(1e6)
-  nvar_parm <- length(model_form$parameters$theta)
-  model_form$mapArg <- list(theta = factor(c(NA, 1:(nvar_parm - 1))))
   # Fit model using large fixed variance
   model_fit <- glmmTMB:::fitTMB(model_form)
   # Assign
