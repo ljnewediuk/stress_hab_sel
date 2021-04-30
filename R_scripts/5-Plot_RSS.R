@@ -10,18 +10,32 @@
 ###                                           ###
 #################################################
 
+library(tidyverse)
+library(ggplot2)
+
 # Load models
 crop_model <- readRDS('output/crop_model_results.rds')
 cover_model <- readRDS('output/cover_model_results.rds')
+model_dat <- readRDS('output/model_dat.rds')
+
+# Set median and max cort from all data
+med_cort <- median(model_dat$cort_ng_g_sc, na.rm = T)
+max_cort <- max(model_dat$cort_ng_g_sc, na.rm = T)
+
+# Set mean sl_ and cos_ta_
+mean_ta <- mean(model_dat$cos_ta_, na.rm = T)
+mean_sl <- mean(model_dat$log_sl_)
 
 # Data frame for predicted data from loc x1
-x1 <- data.frame(cort_ng_g_sc = seq(from = 0.4, to = 2.7, length.out = 100),
+x1 <- data.frame(cort_ng_g_sc = seq(from = med_cort, to = max_cort, length.out = 100),
                       hab = 1,
                       step_id_ = NA,
+                      cos_ta_ = mean_ta,
+                      log_sl_ = mean_sl,
                       id = NA) 
 # Data frame for predicted data from loc x2 (comparison to x1)
 x2 <- x1 %>%
-  mutate(cort_ng_g_sc = 0.4)
+  mutate(cort_ng_g_sc = med_cort)
 
 # Loop to calculate RSS
 all_rss <- data.frame()
@@ -55,8 +69,8 @@ for(i in c('cover', 'crop')) {
 }
 
 # Plot
-ggplot(all_rss, aes(x = cort, y = selection, group = period, col = period)) +
-  geom_hline(yintercept = 0, linetype = 'dashed') +
+ggplot(all_rss, aes(x = cort, y = exp(selection), group = period, col = period)) +
+  geom_hline(yintercept = exp(0), linetype = 'dashed') +
   scale_colour_manual(values = c('#e4bb3f', '#5ac18e')) +
   geom_line(size = 1) +
   theme(panel.background = element_rect(colour = 'black', fill = 'white'),
@@ -64,5 +78,5 @@ ggplot(all_rss, aes(x = cort, y = selection, group = period, col = period)) +
         axis.title = element_text(size = 18)) +
   facet_wrap(~ habitat) +
   xlab('Fecal cortisol (microgram/g)') +
-  ylab('Selection for crop')
+  ylab('log RSS for habitat')
 
