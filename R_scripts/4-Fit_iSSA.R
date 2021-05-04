@@ -33,11 +33,11 @@ sl_covs <- c('log_sl_:cort_ng_g_sc:period', 'log_sl_:period', 'log_sl_',
              '(1 | step_id_)', '(0 + cort_ng_g_sc | id)')
 # Cover model
 cover_covs <- c('cort_ng_g_sc:cover:period', 'cort_ng_g_sc:cover',
-              'cover', 'log_sl_', 'cos_ta_',
+              'cover:period', 'cover', 'log_sl_', 'cos_ta_',
               '(1 | step_id_)', '(0 + cort_ng_g_sc + cover | id)')
 # Crop model
 crop_covs <- c('cort_ng_g_sc:crop:period', 'cort_ng_g_sc:crop', 
-                'crop', 'log_sl_', 'cos_ta_',
+                'crop:period', 'crop', 'log_sl_', 'cos_ta_',
                 '(1 | step_id_)', '(0 + cort_ng_g_sc + crop | id)')
 
 hab_covs <- c('crop', 'cover', 'log_sl_', 'cos_ta_',
