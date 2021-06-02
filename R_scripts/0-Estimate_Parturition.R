@@ -36,7 +36,7 @@ dat_utm <- unlist(st_geometry(utm_conv)) %>%
 dat_calving <- dat_utm %>%
   mutate(month = lubridate::month(dat_time)) %>%
   filter(month %in% c(5:7)) %>%
-  mutate(year = lubridate::year(dat_time + lubridate::hours(6))) %>%
+  mutate(year = lubridate::year(dat_time + lubridate::hours(5))) %>%
   mutate(animal_ID = paste(animal_ID, year, sep= '_'))
 
 # Format data for recurse
@@ -87,7 +87,7 @@ dat_recurse_calving <- dat_recurse %>%
   # Add revisit data
   left_join(revis, by = c('id', 't')) %>%
   # Convert t to local time so calving dates are correct and add day/year col
-  mutate(time_lmt = t + lubridate::hours(6)) %>%
+  mutate(time_lmt = t + lubridate::hours(5)) %>%
   mutate(day = lubridate::yday(time_lmt)) 
 
 # Join calving date data in new df
@@ -104,7 +104,7 @@ recurse_by_day <- dat_recurse_calving %>%
 # Add year to ID column
 dat_distance <- dat_utm %>%
   mutate(id = paste(animal_ID, lubridate::year(dat_time), sep = '_')) %>%
-  mutate(time_lmt = dat_time + lubridate::hours(6)) %>%
+  mutate(time_lmt = dat_time + lubridate::hours(5)) %>%
   select(id, x, y, time_lmt)
 
 # Initialize data frame
