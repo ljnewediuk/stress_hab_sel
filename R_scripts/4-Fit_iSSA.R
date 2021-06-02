@@ -7,12 +7,16 @@
 ### - Cover and crop habitats pre- and post-  ###
 ###   calving according to GC levels          ###
 ###                                           ###
+### Models are fit n times after resampling   ###
+### at cluster level (cluster = individual    ###
+### x gc level), and stored in                ###
+### 'output/model_boots/' for later           ###
+### 95% CI bootstrapping                      ###
+###                                           ###
 #################################################
 
 library(sf)
 library(tidyverse)
-library(amt)
-library(glmmTMB)
 
 # Load data
 model_dat <- readRDS('output/model_dat.rds') %>%
@@ -20,9 +24,12 @@ model_dat <- readRDS('output/model_dat.rds') %>%
   # Factor pre- and post-calving periods
   mutate(period = factor(period, 
                          levels = c('pre_calv', 'post_calv'))) %>%
+  group_by(id, cort_ng_g) %>%
+  mutate(group_id = cur_group_id()) %>%
   # Filter out elk with only one or two GC samples
   filter(! id %in% c('ER_E_31', 'ER_E_20'))
-  
+
+library(glmmTMB)
 
 # Set max iterations to 10^15 to aid convergence
 glmmTMBControl(optCtrl=list(iter.max=1e15,eval.max=1e15))
@@ -43,62 +50,46 @@ crop_covs <- c('cort_ng_g_sc:crop:period', 'cort_ng_g_sc:crop',
 hab_covs <- c('crop', 'cover', 'log_sl_', 'cos_ta_',
               '(1 | step_id_)', '(0 + cover + crop | id)')
 
-# Run models
-for(i in c('crop', 'cover', 'sl', 'hab')) {
-  model_covs <- get(paste(i, 'covs', sep = '_'))
-  # Set number of random parameters for mapping
-  nvar_parm <- ifelse(i %in% c('crop', 'cover', 'hab'), 3, 1)
-  # Set up model without fitting
-  model_form <- suppressWarnings(
-    glmmTMB(reformulate(model_covs, response = 'case_'),
-                      family = poisson(), 
-                      map = list(theta = factor(c(NA, 1:nvar_parm))),
-                      data = model_dat, doFit = F))
-  # Set variance of random intercept to 10^6
-  model_form$parameters$theta[1] <- log(1e6)
-  # Fit model using large fixed variance
-  model_fit <- glmmTMB:::fitTMB(model_form)
-  # Assign
-  assign(paste(i, 'model', sep = '_'), model_fit)
+# Create folder to store bootstrap samples
+if(!dir.exists('output/model_boots')) dir.create('output/model_boots')
+
+# Set number of iterations
+it_n <- 500
+# Set start iteration to zero
+iteration <- 0
+
+# Repeat loop n times to save n models
+repeat {
+  # Set iteration
+  iteration <- iteration + 1
+  # Take bootstrap sample from data
+  boot_IDs <- data.frame(group_id = sample(unique(model_dat$group_id),
+                                           size = length(unique(model_dat$group_id)),
+                                           replace = T))
+  # Build bootstrap dataframe
+  model_boot <- left_join(model_dat, boot_IDs)
+  # Run models
+  for(i in c('crop', 'cover', 'sl', 'hab')) {
+    model_covs <- get(paste(i, 'covs', sep = '_'))
+    # Set number of random parameters for mapping
+    nvar_parm <- ifelse(i %in% c('crop', 'cover', 'hab'), 3, 1)
+    # Set up model without fitting
+    model_form <- suppressWarnings(
+      glmmTMB(reformulate(model_covs, response = 'case_'),
+              family = poisson(), 
+              map = list(theta = factor(c(NA, 1:nvar_parm))),
+              data = model_boot, doFit = F))
+    # Set variance of random intercept to 10^6
+    model_form$parameters$theta[1] <- log(1e6)
+    # Fit model using large fixed variance
+    model_fit <- glmmTMB:::fitTMB(model_form)
+    
+    # Save models
+    saveRDS(model_fit, paste('output/model_boots/', 
+                             paste(i, 'model', iteration, sep = '_'), 
+                             '.rds', sep =''))
+  }
+  # When iterations reach n, break the script
+  if(iteration == it_n) break
+  
 }
-
-# Plot step length by cort
-stps_summ <- model_dat %>%
-  as.data.frame() %>%
-  ungroup() %>%
-  filter(case_ == TRUE) %>%
-  # Summarize mean step length at each cort value by period
-  group_by(id, cort_ng_g, period) %>%
-  summarize(mean_sl = mean(sl_, na.rm = T))
-# Plot
-ggplot(stps_summ, aes(x = cort_ng_g, y = log(mean_sl), col = period)) + 
-  geom_point() +
-  geom_smooth(method = 'lm')
-
-# Plot habitat models
-for(i in c('crop', 'cover', 'hab')) {
-  tidy_hab_model <- broom.mixed::tidy(get(paste(i, 'model', sep = '_'))) %>%
-    # Get confidence intervals
-    mutate(lower = estimate - std.error*1.96,
-           upper = estimate + std.error*1.96) %>%
-    # Filter out unneeded coefficients
-    filter(! term == '(Intercept)') %>%
-    filter(! effect == 'ran_pars')
-  # Plot
-  hab_plot <- ggplot(tidy_hab_model, aes(x = term, y = estimate)) +
-    geom_hline(yintercept = 0, linetype = 'dashed') +
-    geom_point() +
-    geom_errorbar(aes(ymin = lower, ymax = upper)) + 
-    theme(axis.text.x = element_text(angle = 45))
-  # Assign
-  assign(paste(i, 'plot', sep = '_'), hab_plot)
-}
-
-
-# Save model outputs
-for(i in c('crop', 'cover', 'sl', 'hab')) {
-  saveRDS(get(paste(i, 'model', sep = '_')), 
-          paste('output/', i, '_model_results.rds', sep = ''))
-}
-
-
