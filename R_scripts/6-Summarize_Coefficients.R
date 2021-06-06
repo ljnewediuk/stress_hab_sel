@@ -53,11 +53,16 @@ levels(all_mods$term) <- c('cos(TA)', 'Habitat', 'Habitat:GC', 'Post:Habitat:GC'
                            'Post:Habitat', 'Habitat', 'Habitat:GC', 
                            'Post:Habitat:GC', 'Post:Habitat', 'log(SL)')
 hab_mod_outs$term <- factor(hab_mod_outs$term, labels = c('cos(TA)', 'Cover', 'Crop', 'log(SL)'))
-
   
 # Save model data
 saveRDS(all_mods, 'output/model_results_crop-cov.rds')
 saveRDS(hab_mod_outs, 'output/model_results_hab.rds')
+
+# Summarize by coefficient (± 95% CI)
+model_summs <- all_mods %>%
+  group_by(habitat, term) %>%
+  summarize(mean_coeff = mean(estimate)) %>%
+  mutate(exp_coeff = exp(mean_coeff))
 
 # Plot crop-cover models
 # tiff('figures/model_bplots_crop-cov.tiff',
