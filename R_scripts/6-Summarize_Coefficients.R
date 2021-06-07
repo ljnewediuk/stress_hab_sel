@@ -72,9 +72,9 @@ model_summs <- all_mods %>%
 # tiff('figures/model_bplots_crop-cov.tiff',
 #      width = 12, height = 8, units = 'in', res = 300)
 ggplot(all_mods, aes(x = term, y = estimate, fill = habitat)) +
-  scale_fill_manual(values = c('#0072e0', '#e06e00')) +
+  # scale_fill_manual(values = c('#0072e0', '#e06e00')) +
   geom_hline(yintercept = 0, linetype = 'dashed') +
-  geom_boxplot(width = 0.5, alpha = 0.6) +
+  geom_boxplot(width = 0.5, alpha = 0.6, fill = '#b7b4bb') +
   theme(panel.background = element_rect(colour = 'black', fill = 'white'),
         strip.background = element_rect(fill = 'white'),
         strip.text = element_text(size = 18),
