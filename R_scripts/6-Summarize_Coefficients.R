@@ -61,8 +61,12 @@ saveRDS(hab_mod_outs, 'output/model_results_hab.rds')
 # Summarize by coefficient (± 95% CI)
 model_summs <- all_mods %>%
   group_by(habitat, term) %>%
-  summarize(mean_coeff = mean(estimate)) %>%
-  mutate(exp_coeff = exp(mean_coeff))
+  summarize(median_coeff = median(estimate),
+            lower_coeff = quantile(estimate, probs = 0.025),
+            upper_coeff = quantile(estimate, probs = 0.975)) %>%
+  mutate(exp_coeff = exp(median_coeff),
+         exp_lower = exp(lower_coeff),
+         exp_upper = exp(upper_coeff))
 
 # Plot crop-cover models
 # tiff('figures/model_bplots_crop-cov.tiff',
