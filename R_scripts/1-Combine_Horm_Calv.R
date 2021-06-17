@@ -42,19 +42,29 @@ horm_means <- dat %>%
             mean_t3 = mean(t3_ng_g, na.rm = T)) %>%
   mutate(stress_resp = ifelse(cort_ng_g < mean_cort, 0, cort_ng_g/mean_cort))
 
+# Adjust calv_dates for plotting background
+calv_dates <- calv_dates %>%
+  # Filter only animals with data
+  filter(animal_year %in% unique(horm_means$animal_year)) %>%
+  filter(! animal_year %in% 
+           c('ER_E_20_2019', 'ER_E_20_2020', 'ER_E_31_2019', 'ER_E_31_2020')) %>%
+  # Add cols expected by ggplot
+  mutate(Jday = 150, cort_ng_g = 1)
+
 # Plot cort ad mean cort over calving period by individual
 # (remove the two individuals with only 1/2 cort samples (ERE 31 and 20))
 # Plot
-# tiff('figures/cort_calving_dates.tiff', width = 8, height = 8, units = 'in', res = 300)
+# tiff('figures/cort_calving_dates.tiff', width = 10, height = 8, units = 'in', res = 300)
 ggplot(dat[!dat$animal_ID %in% c('ER_E_20', 'ER_E_31') ,], aes(x = Jday, 
                 y = cort_ng_g/1000, 
-                group = animal_ID,
-       shape = identification_type)) +
-  geom_rect(aes(ymin = -Inf, ymax = Inf, xmin = -Inf, xmax = calved), 
-            fill = '#5ac18e') +
-  geom_rect(aes(ymin = -Inf, ymax = Inf, xmin = calved, xmax = Inf), 
-            fill = '#e4bb3f') +
-  geom_point(size = 3) +
+                group = animal_year)) +
+  geom_rect(data = calv_dates,
+            aes(ymin = -Inf, ymax = Inf, xmin = -Inf, xmax = calved), 
+            fill = '#5ac18e30') +
+  geom_rect(data = calv_dates,
+            aes(ymin = -Inf, ymax = Inf, xmin = calved, xmax = Inf),
+            fill = '#e4bb3f', alpha = 0.3) +
+  geom_point(size = 3, aes(shape = identification_type)) +
   geom_hline(data = 
                horm_means[!horm_means$animal_ID %in% c('ER_E_20', 'ER_E_31') ,], 
              aes(yintercept = mean_cort/1000),
@@ -69,8 +79,8 @@ ggplot(dat[!dat$animal_ID %in% c('ER_E_20', 'ER_E_31') ,], aes(x = Jday,
         axis.title.x = element_text(size = 18, vjust = -5),
         legend.position = 'none') +
   ylab('Fecal cortisol (microgram/g)') +
-  xlab('Julian day') +
-  facet_wrap(~ animal_ID)
+  xlab('Ordinal day') +
+  facet_wrap(~ animal_year)
 
 # Save data for remaining prep
 saveRDS(horm_means, 'output/horm_calv_dat.rds')
