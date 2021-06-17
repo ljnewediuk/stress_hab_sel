@@ -4,7 +4,7 @@
 ### Calculate bootstrapped model coefficents  ###
 ### for crop and cover habitats with          ###
 ### change in cortisol levels (median and     ###
-### 95% CI RSS)                               ###
+### 95% CI effect sizes)                      ###
 ###                                           ###
 ### Then, plot and visualize results          ###
 ###                                           ###
@@ -59,31 +59,27 @@ hab_mod_outs$term <- factor(hab_mod_outs$term, labels = c('cos(TA)', 'Cover',
 saveRDS(all_mods, 'output/model_results_crop-cov.rds')
 saveRDS(hab_mod_outs, 'output/model_results_hab.rds')
 
-# Summarize by coefficient and effect size (± 95% CI)
-model_summs <- all_mods %>%
-  group_by(habitat, term) %>%
-  summarize(median_coeff = median(estimate),
-            lower_coeff = quantile(estimate, probs = 0.025),
-            upper_coeff = quantile(estimate, probs = 0.975)) %>%
-  mutate(exp_coeff = exp(median_coeff),
-         exp_lower = exp(lower_coeff),
-         exp_upper = exp(upper_coeff))
-
-# Summarize difference in effect sizes before and after calving (± 95% CI)
+# Summarize effect sizes (± 95% CI)
 mod_summs <- all_mods %>%
-  filter(term %in% c('Habitat', 'Habitat:GC', 'Post:Habitat:GC')) %>%
+  filter(! term %in% c('log(SL)', 'cos(TA)')) %>%
+  # Pivot to coefficients in seperate cols
   pivot_wider(names_from = term, values_from = estimate) %>%
   rowwise() %>%
-  mutate(diff_hab_pre = sum(`Habitat`, `Habitat:GC`) - `Habitat`,
-         diff_hab_post = sum(
-           `Habitat` + `Habitat:GC` + `Post:Habitat:GC`) - `Habitat`) %>%
-  group_by(habitat) %>%
-  summarize(median_diff_pre = median(diff_hab_pre),
-            median_diff_post = median(diff_hab_post),
-            lower_diff_pre = quantile(diff_hab_pre, probs = 0.025),
-            upper_diff_pre = quantile(diff_hab_pre, probs = 0.975),
-            lower_diff_post = quantile(diff_hab_post, probs = 0.025),
-            upper_diff_post = quantile(diff_hab_post, probs = 0.975))
+  # Calculate difference in ß across cols for each model
+  mutate(general = Habitat,
+         post_calving = sum(`Habitat`, `Post:Habitat`),
+         general_GC = sum(`Habitat`, `Habitat:GC`),
+         post_calving_GC = sum(
+           `Habitat` + `Post:Habitat` + `Post:Habitat:GC`)) %>%
+  # Pivot back to effect sizes in one col
+  pivot_longer(cols = c('pre_calving', 'post_calving', 
+                             'pre_calving_GC', 'post_calving_GC'),
+               names_to = 'effect_size') %>%
+  # Summarize exp(ß) across models
+  group_by(habitat, effect_size) %>%
+  summarize(median = exp(median(value)),
+            lower = exp(quantile(value, probs = 0.025)),
+            upper = exp(quantile(value, probs = 0.975)))
   
 # Plot crop-cover models
 # tiff('figures/model_bplots_crop-cov.tiff',
