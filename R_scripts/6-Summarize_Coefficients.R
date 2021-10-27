@@ -72,8 +72,8 @@ mod_summs <- all_mods %>%
          post_calving_GC = sum(
            `Habitat` + `Post:Habitat` + `Post:Habitat:GC`)) %>%
   # Pivot back to effect sizes in one col
-  pivot_longer(cols = c('pre_calving', 'post_calving', 
-                             'pre_calving_GC', 'post_calving_GC'),
+  pivot_longer(cols = c('general', 'post_calving', 
+                             'general_GC', 'post_calving_GC'),
                names_to = 'effect_size') %>%
   # Summarize exp(ß) across models
   group_by(habitat, effect_size) %>%
@@ -82,18 +82,19 @@ mod_summs <- all_mods %>%
             upper = exp(quantile(value, probs = 0.975)))
   
 # Plot crop-cover models
-# tiff('figures/model_bplots_crop-cov.tiff',
+# tiff('figures/csee_model_bplots_crop-cov.tiff',
 #      width = 12, height = 8, units = 'in', res = 300)
 ggplot(all_mods, aes(x = term, y = estimate, fill = habitat)) +
   # scale_fill_manual(values = c('#0072e0', '#e06e00')) +
   geom_hline(yintercept = 0, linetype = 'dashed') +
   geom_boxplot(width = 0.5, alpha = 0.6, fill = '#b7b4bb') +
   theme(panel.background = element_rect(colour = 'black', fill = 'white'),
+        plot.margin = unit(c(0.5, 0.5, 1, 0.5), 'cm'),
         strip.background = element_rect(fill = 'white'),
-        strip.text = element_text(size = 18),
+        strip.text = element_text(size = 18, colour = 'black'),
         panel.grid = element_blank(),
-        axis.text = element_text(size = 15),
-        axis.title = element_text(size = 18),
+        axis.text = element_text(size = 15, colour = 'black'),
+        axis.title.x = element_text(size = 18, colour = 'black', vjust = -3),
         legend.position = 'none') +
   xlab('') + ylab('Estimate') +
   coord_flip() +
