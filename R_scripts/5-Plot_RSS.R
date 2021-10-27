@@ -112,12 +112,18 @@ ggplot(all_rss, aes(x = cort, y = exp(selection), group = period, col = period))
                   ymax = exp(selection) + exp(upper), fill = period)) +
   geom_line(size = 1) +
   theme(panel.background = element_rect(colour = 'black', fill = 'white'),
+        plot.margin = unit(c(0.5, 0.5, 1, 1), 'cm'),
         strip.background = element_rect(fill = 'white'),
-        strip.text = element_text(size = 18),
+        strip.text = element_text(size = 18, colour = 'black'),
+        legend.title = element_text(size = 18, colour = 'black'),
+        legend.text = element_text(size = 18, colour = 'black'),
+        legend.spacing.y = unit(0.5, 'cm'),
+        legend.key.size = unit(c(1, 1), 'cm'),
         panel.grid = element_blank(),
-        axis.text = element_text(size = 15), 
-        axis.title = element_text(size = 18)) +
+        axis.text = element_text(size = 16, colour = 'black'), 
+        axis.title.x = element_text(size = 18, colour = 'black', vjust = -5),
+        axis.title.y = element_text(size = 18, colour = 'black', vjust = 5)) +
   facet_wrap(~ habitat, scales = 'free') +
   xlab('Fecal cortisol (microgram/g)') +
-  ylab('log RSS for habitat')
+  ylab('log-RSS for habitat')
 
