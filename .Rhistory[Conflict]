@@ -1,0 +1,512 @@
+y = cort_ng_g/1000,
+group = animal_ID,
+shape = identification_type)) +
+geom_rect(aes(ymin = -Inf, ymax = Inf, xmin = -Inf, xmax = calved),
+fill = '#5ac18e') +
+geom_rect(aes(ymin = -Inf, ymax = Inf, xmin = calved, xmax = Inf),
+fill = '#e4bb3f') +
+geom_point(size = 3) +
+geom_hline(data =
+horm_means[!horm_means$animal_ID %in% c('ER_E_20', 'ER_E_31') ,],
+aes(yintercept = mean_cort/1000),
+linetype = 'dashed', alpha = 0.6) +
+theme(panel.background = element_rect(colour = 'black', fill = 'white'),
+plot.margin = unit(c(0.5, 0.5, 1, 1), 'cm'),
+strip.background = element_rect(fill = 'white'),
+strip.text = element_text(size = 15),
+panel.grid = element_blank(),
+axis.text = element_text(size = 15),
+axis.title.y = element_text(size = 18, vjust = 5),
+axis.title.x = element_text(size = 18, vjust = -5),
+legend.position = 'none') +
+ylab('Fecal cortisol (microgram/g)') +
+xlab('Julian day') +
+facet_wrap(~ animal_ID)
+ggplot(dat[!dat$animal_ID %in% c('ER_E_20', 'ER_E_31') ,], aes(x = Jday,
+y = cort_ng_g/1000,
+group = animal_ID,
+shape = identification_type)) +
+geom_rect(aes(ymin = -Inf, ymax = Inf, xmin = -Inf, xmax = calved),
+fill = '#5ac18e') +
+geom_rect(aes(ymin = -Inf, ymax = Inf, xmin = calved, xmax = Inf),
+fill = '#e4bb3f') +
+geom_point(size = 3) +
+geom_hline(data =
+horm_means[!horm_means$animal_ID %in% c('ER_E_20', 'ER_E_31') ,],
+aes(yintercept = mean_cort/1000),
+linetype = 'dashed', alpha = 0.6) +
+theme(panel.background = element_rect(colour = 'black', fill = 'white'),
+plot.margin = unit(c(0.5, 0.5, 1, 1), 'cm'),
+strip.background = element_rect(fill = 'white'),
+strip.text = element_text(size = 15),
+panel.grid = element_blank(),
+axis.text = element_text(size = 15),
+axis.title.y = element_text(size = 18, vjust = 5),
+axis.title.x = element_text(size = 18, vjust = -5),
+legend.position = 'none') +
+ylab('Fecal cortisol (microgram/g)') +
+xlab('Julian day') +
+facet_wrap(~ animal_ID)
+library(tidyverse)
+library(ggplot2)
+for(i in c('crop', 'cover', 'hab')) {
+# Set initial iteration
+iteration <- 0
+# Initiate df
+mod_outs <- data.frame()
+for(mods in list.files('output/model_boots/', pattern = i)) {
+# Increase iteration number
+iteration <- iteration + 1
+# Load model
+out_mod <- readRDS(paste('output/model_boots/', mods, sep =''))
+# Tidy the model
+mod_tidy <- broom.mixed::tidy(out_mod) %>%
+# Remove random effects and intercept term
+filter(effect == 'fixed' & term != '(Intercept)') %>%
+# Add column for iteration and habitat
+mutate(iteration = iteration,
+habitat = i) %>%
+# Remove extra columns
+select(habitat, term, estimate, iteration)
+# Bind together with remaining models
+mod_outs <- rbind(mod_outs, mod_tidy)
+}
+# Assign
+assign(paste(i, 'mod_outs', sep = '_'), mod_outs)
+}
+`model_results_crop-cov` <- readRDS("~/Documents/R-Projects/risk_behaviour_repro/output/model_results_crop-cov.rds")
+View(`model_results_crop-cov`)
+all_mods <- `model_results_crop-cov`
+View(all_mods)
+# Summarize by coefficient (± 95% CI)
+model_summs <- all_mods %>%
+group_by(habitat, term) %>%
+mutate(mean_coeff = mean(estimate))
+# Summarize by coefficient (± 95% CI)
+model_summs <- all_mods %>%
+group_by(term) %>%
+mutate(mean_coeff = mean(estimate))
+View(model_summs)
+# Summarize by coefficient (± 95% CI)
+model_summs <- all_mods %>%
+group_by(habitat, term) %>%
+summarize(mean_coeff = mean(estimate))
+View(model_summs)
+exp(model_summs[12,]$mean_coeff)
+exp(3)
+# Summarize by coefficient (± 95% CI)
+model_summs <- all_mods %>%
+group_by(habitat, term) %>%
+summarize(mean_coeff = mean(estimate)) %>%
+mutate(exp_coeff = exp(mean_coeff))
+exp(3.00273287-2.44877428)
+exp(-1.86191150+1.68932510)
+all_mods <- readRDS('output/model_results_crop-cov.rds')
+library(tidyverse)
+library(ggplot2)
+# Summarize by coefficient (± 95% CI)
+model_summs <- all_mods %>%
+group_by(habitat, term) %>%
+summarize(mean_coeff = mean(estimate)) %>%
+mutate(exp_coeff = exp(mean_coeff))
+# Summarize by coefficient (± 95% CI)
+model_summs <- all_mods %>%
+group_by(habitat, term) %>%
+summarize(mean_coeff = mean(estimate),
+quantile(estimate, probs = 0.05)) %>%
+mutate(exp_coeff = exp(mean_coeff))
+View(all_mods)
+View(model_summs)
+# Summarize by coefficient (± 95% CI)
+model_summs <- all_mods %>%
+group_by(habitat, term) %>%
+summarize(mean_coeff = mean(estimate),
+lower_coeff = quantile(estimate, probs = 0.025),
+upper_coeff = quantile(estimate, probs = 0.975)) %>%
+mutate(exp_coeff = exp(mean_coeff))
+# Summarize by coefficient (± 95% CI)
+model_summs <- all_mods %>%
+group_by(habitat, term) %>%
+summarize(mean_coeff = mean(estimate),
+lower_coeff = quantile(estimate, probs = 0.025),
+upper_coeff = quantile(estimate, probs = 0.975)) %>%
+mutate(exp_coeff = exp(mean_coeff),
+exp_lower = exp(lower_coeff),
+exp_upper = ex;(upper_coeff))
+# Summarize by coefficient (± 95% CI)
+model_summs <- all_mods %>%
+group_by(habitat, term) %>%
+summarize(mean_coeff = mean(estimate),
+lower_coeff = quantile(estimate, probs = 0.025),
+upper_coeff = quantile(estimate, probs = 0.975)) %>%
+mutate(exp_coeff = exp(mean_coeff),
+exp_lower = exp(lower_coeff),
+exp_upper = exp(upper_coeff))
+# Summarize by coefficient (± 95% CI)
+model_summs <- all_mods %>%
+group_by(habitat, term) %>%
+summarize(median_coeff = mean(estimate),
+lower_coeff = quantile(estimate, probs = 0.025),
+upper_coeff = quantile(estimate, probs = 0.975)) %>%
+mutate(exp_coeff = exp(mean_coeff),
+exp_lower = exp(lower_coeff),
+exp_upper = exp(upper_coeff))
+# Summarize by coefficient (± 95% CI)
+model_summs <- all_mods %>%
+group_by(habitat, term) %>%
+summarize(mean_coeff = mean(estimate),
+lower_coeff = quantile(estimate, probs = 0.025),
+upper_coeff = quantile(estimate, probs = 0.975)) %>%
+mutate(exp_coeff = exp(mean_coeff),
+exp_lower = exp(lower_coeff),
+exp_upper = exp(upper_coeff))
+# Summarize by coefficient (± 95% CI)
+model_summs <- all_mods %>%
+group_by(habitat, term) %>%
+summarize(median_coeff = median(estimate),
+lower_coeff = quantile(estimate, probs = 0.025),
+upper_coeff = quantile(estimate, probs = 0.975)) %>%
+mutate(exp_coeff = exp(median_coeff),
+exp_lower = exp(lower_coeff),
+exp_upper = exp(upper_coeff))
+2.88132115-2.31235005
+exp(2.88132115-2.31235005)
+exp(1.61584629-4.66767581)
+exp(5.208035538-1.008318748)
+exp(-1.74534851+1.58656795)
+exp(	-3.76593764+0.22295897)
+3.611958248-0.412751734
+exp(3.611958248-0.412751734)
+exp(2.88132115-2.50538260)
+ep(1.61584629-5.04481338)
+exp(1.61584629-5.04481338)
+exp(5.208035538-1.021414870)
+exp(-1.74534851+	1.89576822)
+exp(-3.76593764+0.32204458)
+exp(	4.436839252-	-0.412751734)
+exp(2.88132115-2.31235005+2.46686890)
+exp(1.61584629-4.66767581+1.06980197)
+exp(5.208035538-1.008318748+4.887484589)
+exp(2.46686890-2.50538260)
+exp(-1.74534851+1.58656795-1.64370444)
+exp(-3.76593764+0.22295897-4.19664636)
+exp(-0.412751734+3.611958248-0.184968395)
+# Plot crop-cover models
+# tiff('figures/model_bplots_crop-cov.tiff',
+#      width = 12, height = 8, units = 'in', res = 300)
+ggplot(all_mods, aes(x = term, y = estimate, fill = habitat)) +
+scale_fill_manual(values = c('#0072e0', '#e06e00')) +
+geom_hline(yintercept = 0, linetype = 'dashed') +
+geom_boxplot(width = 0.5, alpha = 0.6) +
+theme(panel.background = element_rect(colour = 'black', fill = 'white'),
+strip.background = element_rect(fill = 'white'),
+strip.text = element_text(size = 18),
+panel.grid = element_blank(),
+axis.text = element_text(size = 15),
+axis.title = element_text(size = 18),
+legend.position = 'none') +
+xlab('') + ylab('Estimate') +
+coord_flip() +
+facet_wrap(~ habitat, scales = 'free_x')
+# Plot crop-cover models
+# tiff('figures/model_bplots_crop-cov.tiff',
+#      width = 12, height = 8, units = 'in', res = 300)
+ggplot(all_mods, aes(x = term, y = estimate, fill = habitat)) +
+# scale_fill_manual(values = c('#0072e0', '#e06e00')) +
+geom_hline(yintercept = 0, linetype = 'dashed') +
+geom_boxplot(width = 0.5, alpha = 0.6, colour = 'grey') +
+theme(panel.background = element_rect(colour = 'black', fill = 'white'),
+strip.background = element_rect(fill = 'white'),
+strip.text = element_text(size = 18),
+panel.grid = element_blank(),
+axis.text = element_text(size = 15),
+axis.title = element_text(size = 18),
+legend.position = 'none') +
+xlab('') + ylab('Estimate') +
+coord_flip() +
+facet_wrap(~ habitat, scales = 'free_x')
+# Plot crop-cover models
+# tiff('figures/model_bplots_crop-cov.tiff',
+#      width = 12, height = 8, units = 'in', res = 300)
+ggplot(all_mods, aes(x = term, y = estimate, fill = habitat)) +
+# scale_fill_manual(values = c('#0072e0', '#e06e00')) +
+geom_hline(yintercept = 0, linetype = 'dashed') +
+geom_boxplot(width = 0.5, alpha = 0.6, fill = 'grey') +
+theme(panel.background = element_rect(colour = 'black', fill = 'white'),
+strip.background = element_rect(fill = 'white'),
+strip.text = element_text(size = 18),
+panel.grid = element_blank(),
+axis.text = element_text(size = 15),
+axis.title = element_text(size = 18),
+legend.position = 'none') +
+xlab('') + ylab('Estimate') +
+coord_flip() +
+facet_wrap(~ habitat, scales = 'free_x')
+# Plot crop-cover models
+# tiff('figures/model_bplots_crop-cov.tiff',
+#      width = 12, height = 8, units = 'in', res = 300)
+ggplot(all_mods, aes(x = term, y = estimate, fill = habitat)) +
+# scale_fill_manual(values = c('#0072e0', '#e06e00')) +
+geom_hline(yintercept = 0, linetype = 'dashed') +
+geom_boxplot(width = 0.5, alpha = 0.6, fill = '#b7b4bb') +
+theme(panel.background = element_rect(colour = 'black', fill = 'white'),
+strip.background = element_rect(fill = 'white'),
+strip.text = element_text(size = 18),
+panel.grid = element_blank(),
+axis.text = element_text(size = 15),
+axis.title = element_text(size = 18),
+legend.position = 'none') +
+xlab('') + ylab('Estimate') +
+coord_flip() +
+facet_wrap(~ habitat, scales = 'free_x')
+tiff('figures/model_bplots_crop-cov.tiff',
+width = 12, height = 8, units = 'in', res = 300)
+ggplot(all_mods, aes(x = term, y = estimate, fill = habitat)) +
+# scale_fill_manual(values = c('#0072e0', '#e06e00')) +
+geom_hline(yintercept = 0, linetype = 'dashed') +
+geom_boxplot(width = 0.5, alpha = 0.6, fill = '#b7b4bb') +
+theme(panel.background = element_rect(colour = 'black', fill = 'white'),
+strip.background = element_rect(fill = 'white'),
+strip.text = element_text(size = 18),
+panel.grid = element_blank(),
+axis.text = element_text(size = 15),
+axis.title = element_text(size = 18),
+legend.position = 'none') +
+xlab('') + ylab('Estimate') +
+coord_flip() +
+facet_wrap(~ habitat, scales = 'free_x')
+ggplot(all_mods, aes(x = term, y = estimate, fill = habitat)) +
+# scale_fill_manual(values = c('#0072e0', '#e06e00')) +
+geom_hline(yintercept = 0, linetype = 'dashed') +
+geom_boxplot(width = 0.5, alpha = 0.6, fill = '#b7b4bb') +
+theme(panel.background = element_rect(colour = 'black', fill = 'white'),
+strip.background = element_rect(fill = 'white'),
+strip.text = element_text(size = 18),
+panel.grid = element_blank(),
+axis.text = element_text(size = 15),
+axis.title = element_text(size = 18),
+legend.position = 'none') +
+xlab('') + ylab('Estimate') +
+coord_flip() +
+facet_wrap(~ habitat, scales = 'free_x')
+# Load data
+model_dat <- readRDS('output/model_dat.rds') %>%
+na.omit() %>%
+# Factor pre- and post-calving periods
+mutate(period = factor(period,
+levels = c('pre_calv', 'post_calv'))) %>%
+group_by(id, cort_ng_g) %>%
+mutate(group_id = cur_group_id()) %>%
+# Filter out elk with only one or two GC samples
+filter(! id %in% c('ER_E_31', 'ER_E_20'))
+View(model_dat)
+length(unique(model_dat$group_id))
+library(sf)
+library(tidyverse)
+# Load data
+model_dat <- readRDS('output/model_dat.rds') %>%
+na.omit() %>%
+# Factor pre- and post-calving periods
+mutate(period = factor(period,
+levels = c('pre_calv', 'post_calv'))) %>%
+group_by(id, cort_ng_g) %>%
+mutate(group_id = cur_group_id()) %>%
+# Filter out elk with only one or two GC samples
+filter(! id %in% c('ER_E_31', 'ER_E_20'))
+length(unique(model_dat$group_id))
+View(model_dat)
+length(model_dat[model_dat$case_==T])
+nrow(model_dat[model_dat$case_==T])
+nrow(model_dat[model_dat$case_==T,])
+model_dat %>% filter(case_ == T) %>% group_by(id) %>% summarize(n())
+foo <- model_dat %>% filter(case_ == T) %>% group_by(id) %>% summarize(n())
+View(foo)
+sum(foo[,2])
+median(foo[,2])
+median(as.numeric(foo[,2]))
+foo2 <- as.numeric(foo[,2])
+foo2 <- foo[,2]
+foo <- model_dat %>% filter(case_ == T) %>% group_by(id) %>% summarize(n()) %>% ungroup()
+foo2 <- foo[,2]
+foo2 <- as.numeric(foo[,2])
+foo <- model_dat %>% filter(case_ == T) %>% group_by(id) %>% summarize(count = n()) %>% ungroup()
+foo2 <- foo %>% summarize(median(count))
+View(foo2)
+foo2 <- foo %>% summarize(median(count), percentile(count, probs = 0.025))
+foo2 <- foo %>% summarize(median(count), quantile(count, probs = 0.025))
+foo2 <- foo %>% summarize(median(count), quantile(count, probs = 0.25), quantile(count, probs = 0.75))
+foo <- model_dat %>% filter(case_ == T) %>% group_by(id, group_id) %>% summarize(count = n()) %>% ungroup()
+View(foo)
+foo2 <- foo %>% group_by(id) %>% summarize(count = n())
+View(foo2)
+foo2 %>% summarize(median(count))
+View(model_dat)
+all_mods <- readRDS('output/model_results_crop-cov.rds')
+View(all_mods)
+# Load data
+sample_IDs <- readRDS('input/final_sample_IDs.rds')
+cort_t3 <- read.csv('input/cort_t3_2019-2020.csv')
+calv_dates <- readRDS('output/calving_dates.rds')
+# Prep calving dates for joining
+calv_dates <- calv_dates %>%
+# Rename elk-year column and select only pertinent cols
+rename('animal_year' = animal_ID) %>%
+select(animal_year, calved)
+# Join identifications, hormones, and calving dates
+dat <- sample_IDs %>%
+left_join(cort_t3, by = 'label') %>%
+mutate(year = lubridate::year(sample_lmt),
+Jday = lubridate::yday(sample_lmt),
+animal_year = paste(animal_ID, year, sep = '_')) %>%
+left_join(calv_dates, by = 'animal_year') %>%
+# Create factor for pre- and post-calving periods
+mutate(d_to_calv = Jday - calved,
+period = ifelse(d_to_calv < 0, 'pre_calv', 'post_calv'))
+# Calculate stress response as % increase in over mean cort (baseline)
+horm_means <- dat %>%
+group_by(animal_ID) %>%
+mutate(mean_cort = mean(cort_ng_g, na.rm = T),
+mean_t3 = mean(t3_ng_g, na.rm = T)) %>%
+mutate(stress_resp = ifelse(cort_ng_g < mean_cort, 0, cort_ng_g/mean_cort))
+View(dat)
+max(dat$Jday)
+min(dat$Jday)
+library(tidyverse)
+library(ggplot2)
+all_mods <- readRDS('output/model_results_crop-cov.rds')
+View(all_mods)
+mod_summs <- all_mods %>%
+filter(term %in% c('Habitat', 'Habitat:GC', 'Post:Habitat:GC')) %>%
+group_by(habitat) %>%
+pivot_wider(names_from = term, values_from = estimate)
+View(mod_summs)
+# Summarize by difference
+mod_summs <- all_mods %>%
+filter(term %in% c('Habitat', 'Habitat:GC', 'Post:Habitat:GC')) %>%
+group_by(habitat) %>%
+pivot_wider(names_from = term, values_from = estimate) %>%
+mutate(diff_hab_pre_exp = Habitat + Habitat:GC)
+# Summarize by difference
+mod_summs <- all_mods %>%
+filter(term %in% c('Habitat', 'Habitat:GC', 'Post:Habitat:GC')) %>%
+group_by(habitat) %>%
+pivot_wider(names_from = term, values_from = estimate) %>%
+mutate(diff_hab_pre_exp = `Habitat` + `Habitat:GC`)
+# Summarize by difference
+mod_summs <- all_mods %>%
+filter(term %in% c('Habitat', 'Habitat:GC', 'Post:Habitat:GC')) %>%
+group_by(habitat) %>%
+pivot_wider(names_from = term, values_from = estimate) %>%
+mutate(diff_hab_pre_exp = exp(`Habitat` + `Habitat:GC`))
+# Summarize by difference
+mod_summs <- all_mods %>%
+filter(term %in% c('Habitat', 'Habitat:GC', 'Post:Habitat:GC')) %>%
+group_by(habitat) %>%
+pivot_wider(names_from = term, values_from = estimate) %>%
+mutate(diff_hab_pre = `Habitat` + `Habitat:GC`)
+# Summarize by difference
+mod_summs <- all_mods %>%
+filter(term %in% c('Habitat', 'Habitat:GC', 'Post:Habitat:GC')) %>%
+group_by(habitat) %>%
+pivot_wider(names_from = term, values_from = estimate) %>%
+mutate(diff_hab_pre = `Habitat` + `Habitat:GC`,
+diff_hab_post = `Habitat` + `Habitat:GC` + `Habitat:GC:Post`)
+# Summarize by difference
+mod_summs <- all_mods %>%
+filter(term %in% c('Habitat', 'Habitat:GC', 'Post:Habitat:GC')) %>%
+group_by(habitat) %>%
+pivot_wider(names_from = term, values_from = estimate) %>%
+mutate(diff_hab_pre = `Habitat` + `Habitat:GC`,
+diff_hab_post = `Habitat` + `Habitat:GC` + `Post:Habitat:GC`)
+# Summarize by difference
+mod_summs <- all_mods %>%
+filter(term %in% c('Habitat', 'Habitat:GC', 'Post:Habitat:GC')) %>%
+group_by(habitat) %>%
+pivot_wider(names_from = term, values_from = estimate) %>%
+mutate(diff_hab_pre = exp(`Habitat` + `Habitat:GC`),
+diff_hab_post = exp(`Habitat` + `Habitat:GC` + `Post:Habitat:GC`))
+# Summarize by difference
+mod_summs <- all_mods %>%
+filter(term %in% c('Habitat', 'Habitat:GC', 'Post:Habitat:GC')) %>%
+group_by(habitat) %>%
+pivot_wider(names_from = term, values_from = estimate) %>%
+mutate(diff_hab_pre = exp(`Habitat` + `Habitat:GC`),
+diff_hab_post = exp(`Habitat` + `Habitat:GC` + `Post:Habitat:GC`)) %>%
+summarize(median_diff_pre = median(diff_hab_pre),
+median_diff_post = median(diff_hab_post),
+lower_diff_pre = quantile(diff_hab_pre, probs = 0.025),
+upper_diff_pre = quantile(diff_hab_pre, probs = 0.975),
+lower_diff_post = quantile(diff_hab_post, probs = 0.025),
+upper_diff_post = quantile(diff_hab_post, probs = 0.975))
+View(mod_summs)
+mod_summs <- all_mods %>%
+filter(term %in% c('Habitat', 'Habitat:GC', 'Post:Habitat:GC')) %>%
+group_by(habitat) %>%
+pivot_wider(names_from = term, values_from = estimate) %>%
+mutate(diff_hab_pre = exp(`Habitat` + `Habitat:GC`),
+diff_hab_post = exp(`Habitat` + `Habitat:GC` + `Post:Habitat:GC`))
+mod_summs <- all_mods %>%
+filter(term %in% c('Habitat', 'Habitat:GC', 'Post:Habitat:GC')) %>%
+group_by(habitat) %>%
+pivot_wider(names_from = term, values_from = estimate) %>%
+rowwise() %>%
+mutate(diff_hab_pre = exp(`Habitat` + `Habitat:GC`),
+diff_hab_post = exp(`Habitat` + `Habitat:GC` + `Post:Habitat:GC`))
+-2.2167756	+0.68640402
+mod_summs <- all_mods %>%
+filter(term %in% c('Habitat', 'Habitat:GC', 'Post:Habitat:GC')) %>%
+pivot_wider(names_from = term, values_from = estimate) %>%
+rowwise() %>%
+mutate(diff_hab_pre = exp(`Habitat` + `Habitat:GC`),
+diff_hab_post = exp(`Habitat` + `Habitat:GC` + `Post:Habitat:GC`))
+mod_summs <- all_mods %>%
+filter(term %in% c('Habitat', 'Habitat:GC', 'Post:Habitat:GC')) %>%
+pivot_wider(names_from = term, values_from = estimate) %>%
+rowwise() %>%
+mutate(diff_hab_pre = exp(sum(`Habitat`, `Habitat:GC`)),
+diff_hab_post = exp(`Habitat` + `Habitat:GC` + `Post:Habitat:GC`))
+mod_summs <- all_mods %>%
+filter(term %in% c('Habitat', 'Habitat:GC', 'Post:Habitat:GC')) %>%
+pivot_wider(names_from = term, values_from = estimate) %>%
+mutate(diff_hab_pre = exp(sum(`Habitat`, `Habitat:GC`)),
+diff_hab_post = exp(`Habitat` + `Habitat:GC` + `Post:Habitat:GC`))
+mod_summs <- all_mods %>%
+filter(term %in% c('Habitat', 'Habitat:GC', 'Post:Habitat:GC')) %>%
+pivot_wider(names_from = term, values_from = estimate) %>%
+rowwise() %>%
+mutate(diff_hab_pre = sum(`Habitat`, `Habitat:GC`),
+diff_hab_post = sum(`Habitat` + `Habitat:GC` + `Post:Habitat:GC`))
+mod_summs <- all_mods %>%
+filter(term %in% c('Habitat', 'Habitat:GC', 'Post:Habitat:GC')) %>%
+pivot_wider(names_from = term, values_from = estimate) %>%
+rowwise() %>%
+mutate(diff_hab_pre = sum(`Habitat`, `Habitat:GC`)-`Habitat`,
+diff_hab_post = sum(`Habitat` + `Habitat:GC` + `Post:Habitat:GC`)-`Habitat`)
+# Summarize by difference
+mod_summs <- all_mods %>%
+filter(term %in% c('Habitat', 'Habitat:GC', 'Post:Habitat:GC')) %>%
+pivot_wider(names_from = term, values_from = estimate) %>%
+rowwise() %>%
+mutate(diff_hab_pre = sum(`Habitat`, `Habitat:GC`)-`Habitat`,
+diff_hab_post = sum(`Habitat` + `Habitat:GC` + `Post:Habitat:GC`)-`Habitat`) %>%
+group_by(habitat) %>%
+summarize(median_diff_pre = median(diff_hab_pre),
+median_diff_post = median(diff_hab_post),
+lower_diff_pre = quantile(diff_hab_pre, probs = 0.025),
+upper_diff_pre = quantile(diff_hab_pre, probs = 0.975),
+lower_diff_post = quantile(diff_hab_post, probs = 0.025),
+upper_diff_post = quantile(diff_hab_post, probs = 0.975))
+exp(6)
+ppois(1,3)
+dpois(1,3)
+qpois(1,3)
+pgamma(shape = 2,  scale = 1/3, q = .5)
+pgamma(shape = 2,  scale = 1/3, q = 1.5)
+dgamma(shape = 2,  scale = 1/3, q = 1.5)
+dgamma(shape = 2,  scale = 1/3, x = 1.5)
+dgamma(shape = 2,  scale = 1/3, x = .5)
+dgamma(shape = 2,  scale = 1/3, x = .5)-dgamma(shape = 2,  scale = 1/3, x = 1.5)
+qgamma(shape = 2,  scale = 1/3, p = .5)
+qgamma(shape = 2,  scale = 1/3, p = 1.5)
+pgamma(shape = 2,  scale = 1/3, q = 1.5)
+pgamma(shape = 2,  scale = 1/3, q = 1.5)-pgamma(shape = 2,  scale = 1/3, q = .5)
