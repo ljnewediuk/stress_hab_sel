@@ -18,33 +18,53 @@ source('R_functions/Validate_UHC.R')
 dat <- readRDS('output/model_dat.rds') %>%
   na.omit() 
 
-foo <- uhc_validate(dat = dat, calv_period = 'pre_calv', model_form = 'cover_reduced', elk_id = unique(dat$id))
-foo2 <- uhc_validate(dat = dat, calv_period = 'post_calv', model_form = 'cover_reduced', elk_id = unique(dat$id))
-foo3 <- foo %>% rbind(foo2)
+# Set seed value
+set.seed(1)
 
-foo4 <- uhc_validate(dat = dat, calv_period = 'pre_calv', model_form = 'crop', elk_id = unique(dat$id))
-foo5 <- uhc_validate(dat = dat, calv_period = 'post_calv', model_form = 'crop', elk_id = unique(dat$id))
-foo6 <- foo4 %>% rbind(foo5)
+model_val_df <- data.frame()
 
-# Plot
-ggplot(foo6) +
-  # Plot predicted distribution at used points
-  geom_ribbon(aes(x = densdat_x, ymin = densrand_l, ymax = densrand_h), alpha = 0.5) +
-  # Plot actual distribution at used points
-  geom_line(aes(x = densdat_x, y = densdat_y), colour = 'black', size = 1) +
-  # Plot available distribution at used points
-  geom_line(aes(x = densavail_x, y = densavail_y), colour = 'red', size = 1, linetype = 'dashed') +
-  facet_grid(rows = vars(period), cols = vars(covariate), scales = 'free')
+for(form in c('crop', 'cover')) {
+  for(per in c('pre_calv', 'post_calv')) {
+    for(i in c(15, 16, 18, 19, 20, 21, 23, 25, 27, 28, 29, 31, 32)) {
+      
+      try({
+        model_val <- uhc_validate(dat = dat, calv_period = per, 
+                                  model_form = form, elk_id = paste0('ER_E_', i))
+        })
+      
+      model_val_df <- rbind(model_val_df, model_val)
+      
+    }
+  }  
+}
 
-# Create UHC plots (uhcdensplot function)
-uhcdensplot(densdat = denshats$densdat, 
-            densrand = denshats$densrand, 
-            includeAvail = TRUE, 
-            densavail = denshats$densavail) 
-mtext(side=3, line=1,  panlabs1[1], cex=1.2, ad=0)
-mtext(outer=F, side=2, line=3, "Density")
-mtext(outer=F, side=3, line=1, "Deciduous", cex=1.4)
-legend(0.3, 10.5, c("Available", "Used", "Predicted"), 
-       lty=c(1, 2, 1), lwd=c(2,3, 10), 
-       col=c("Black", "red", "gray"), bty="n", cex=1.8)
 
+uhc_plot_df <- model_val_df %>%
+  na.omit() %>%
+  filter(! covariate %in% c('cos_ta_', 'log_sl_')) %>%
+  arrange(period) %>%
+  mutate(period_id = factor(paste(period, id, sep = ' ')))
+
+# tiff('figures/val_plot.tiff', width = 12, height = 18, units = 'in', res = 300)
+uhc_p_list <- list()
+for(i in unique(uhc_plot_df$covariate)) {
+  
+  # Plot
+  uhc_p_list[[i]] <- grid::grob(
+    ggplot(uhc_plot_df[uhc_plot_df$covariate == i ,]) +
+      # Plot predicted distribution at used points
+      geom_ribbon(aes(x = densdat_x, ymin = densrand_l, ymax = densrand_h), alpha = 0.5) +
+      # Plot actual distribution at used points
+      geom_line(aes(x = densdat_x, y = densdat_y), colour = 'black', size = 1) +
+      # Plot available distribution at used points
+      geom_line(aes(x = densavail_x, y = densavail_y), colour = 'red', size = 1, linetype = 'dashed') +
+      facet_wrap(~ period_id, scales = 'free', strip.position = 'left', ncol = 1)
+  )
+
+}
+
+grid.arrange(uhc_p_list$crop[[1]], uhc_p_list$`crop:cort_ng_g_sc`[[1]],
+            uhc_p_list$cover[[1]], uhc_p_list$`cover:cort_ng_g_sc`[[1]],
+            ncol = 4)
+
+dev.off()
