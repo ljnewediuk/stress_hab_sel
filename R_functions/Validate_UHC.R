@@ -34,10 +34,6 @@ library(survival)
 #       - "cover_reduced": Cover model without interaction
 #   - Individual ID: Name of elk 
 
-# Load data
-dat <- readRDS('output/model_dat.rds') %>%
-  na.omit() 
-
 uhc_validate <- function(dat, calv_period, model_form, elk_id) {
   
   # Name covariates
@@ -52,8 +48,8 @@ uhc_validate <- function(dat, calv_period, model_form, elk_id) {
     mutate(presence = ifelse(case_ == TRUE, 1, 0)) %>%
     rename('stratum' = step_id_)
   
-  # Separate into training/testing data (half of steps for each)
-  train.steps <- sample(unique(indiv_dat$stratum), ceiling(length(unique(indiv_dat$stratum))/2))
+  # Separate into training/testing data (2/3 training, 1/3 testing)
+  train.steps <- sample(unique(indiv_dat$stratum), ceiling(length(unique(indiv_dat$stratum))/1.5))
   test.steps <- unique(indiv_dat$stratum)[! unique(indiv_dat$stratum) %in% train.steps]
   mdat.train <- indiv_dat %>%
     filter(stratum %in% train.steps)
