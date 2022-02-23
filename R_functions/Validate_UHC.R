@@ -34,7 +34,7 @@ library(survival)
 #       - "cover_reduced": Cover model without interaction
 #   - Individual ID: Name of elk 
 
-uhc_validate <- function(dat, calv_period, model_form, elk_id) {
+uhc_validate <- function(dat, calv_period, model_form, elk_id, n_iterations) {
   
   # Name covariates
   if(model_form == 'cover') covs <- c('cover', 'cover:cort_ng_g_sc', 'log_sl_', 'cos_ta_')
@@ -70,8 +70,8 @@ uhc_validate <- function(dat, calv_period, model_form, elk_id) {
   # Design matrix for covariates z (matrix of used & available environmental
   # characteristics in the test data)
   z <- model.matrix(form2a, data = mdat.test)[,-5]
-  # Simulate from model x 1,000
-  xchoice <- uhcsimstrat(nsims = 1000,
+  # Simulate from model x n_iterations
+  xchoice <- uhcsimstrat(nsims = n_iterations,
                          xmat = design.mat.test, 
                          stratum = mdat.test$stratum, 
                          fit_ssf = ssf.train,
