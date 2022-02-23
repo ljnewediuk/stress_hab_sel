@@ -6,5 +6,7 @@
 .DS_Store
 input/
 output/
+alt_output/
 figures/
+rasters/
 risk_behaviour_repro.Rproj
