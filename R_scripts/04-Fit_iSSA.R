@@ -19,14 +19,18 @@ library(sf)
 library(tidyverse)
 
 # Load data
-model_dat <- readRDS('output/model_dat.rds') %>%
+model_dat <- readRDS('alt_output/model_dat.rds') %>%
   na.omit() %>%
   # Factor pre- and post-calving periods
   mutate(period = factor(period, 
                          levels = c('pre_calv', 'post_calv'))) %>%
+  # Group for bootstraps 
+  # (IMPORTANT: loading glmmTMB first will interfere with cur_group_id() 
+  # function, preventing bootstrap from working. If glmmTMB is loaded, confirm 
+  # that each id x cort level was assigned to a different group.)
   group_by(id, cort_ng_g) %>%
   mutate(group_id = cur_group_id()) %>%
-  # Filter out elk with only one or two GC samples
+  # Filter out elk with >3 GC samples
   filter(! id %in% c('ER_E_31', 'ER_E_20'))
 
 library(glmmTMB)
@@ -35,9 +39,6 @@ library(glmmTMB)
 glmmTMBControl(optCtrl=list(iter.max=1e15,eval.max=1e15))
 
 # Define covariates for models
-# Step length model
-sl_covs <- c('log_sl_:cort_ng_g_sc:period', 'log_sl_:period', 'log_sl_',
-             '(1 | step_id_)', '(0 + cort_ng_g_sc | id)')
 # Cover model
 cover_covs <- c('cort_ng_g_sc:cover:period', 'cort_ng_g_sc:cover',
               'cover:period', 'cover', 'log_sl_', 'cos_ta_',
@@ -47,16 +48,17 @@ crop_covs <- c('cort_ng_g_sc:crop:period', 'cort_ng_g_sc:crop',
                 'crop:period', 'crop', 'log_sl_', 'cos_ta_',
                 '(1 | step_id_)', '(0 + cort_ng_g_sc + crop | id)')
 
-hab_covs <- c('crop', 'cover', 'log_sl_', 'cos_ta_',
-              '(1 | step_id_)', '(0 + cover + crop | id)')
-
 # Create folder to store bootstrap samples
-if(!dir.exists('output/model_boots')) dir.create('output/model_boots')
+if(!dir.exists('alt_output/model_boots')) dir.create('alt_output/model_boots')
 
 # Set number of iterations
-it_n <- 500
-# Set start iteration to zero
-iteration <- 0
+it_n <- 1000
+
+# Set start iteration to zero or next iteration
+existing_its <- list.files('alt_output/model_boots')
+iteration <- ifelse(length(existing_its) == 0, 0, 
+                    max(as.numeric(str_extract_all(existing_its, '[0-9]+'))))
+
 
 # Repeat loop n times to save n models
 repeat {
@@ -69,10 +71,10 @@ repeat {
   # Build bootstrap dataframe
   model_boot <- left_join(model_dat, boot_IDs)
   # Run models
-  for(i in c('crop', 'cover', 'sl', 'hab')) {
+  for(i in c('crop', 'cover')) {
     model_covs <- get(paste(i, 'covs', sep = '_'))
     # Set number of random parameters for mapping
-    nvar_parm <- ifelse(i %in% c('crop', 'cover', 'hab'), 3, 1)
+    nvar_parm <- ifelse(i %in% c('crop', 'cover'), 3, 1)
     # Set up model without fitting
     model_form <- suppressWarnings(
       glmmTMB(reformulate(model_covs, response = 'case_'),
@@ -85,7 +87,7 @@ repeat {
     model_fit <- glmmTMB:::fitTMB(model_form)
     
     # Save models
-    saveRDS(model_fit, paste('output/model_boots/', 
+    saveRDS(model_fit, paste('alt_output/model_boots/', 
                              paste(i, 'model', iteration, sep = '_'), 
                              '.rds', sep =''))
   }

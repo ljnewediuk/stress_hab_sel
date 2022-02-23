@@ -46,7 +46,10 @@ for(i in c('crop', 'cover')) {
   # Return raster
   assign(paste(i, 'prop_raster', sep = '_'), buffered_rast)
   assign(paste(i, 'binary_raster', sep = '_'), hab_rast)
+  # Save binary raster
+  raster::writeRaster(hab_rast, paste0('rasters/', i, '_rast.tif'), overwrite = T)
 }
+
 
 # Make track
 trk <- amt::mk_track(dat, 
@@ -60,7 +63,7 @@ stps <- track_resample(trk, rate=hours(2), tolerance=minutes(30)) %>%
   # Make sure bursts have at least three points
   filter_min_n_burst(min_n = 3) %>% 
   steps_by_burst(keep_cols = 'start') %>% 
-  random_steps(n = 10) %>%
+  random_steps(n = 40) %>%
   # Extract land cover
   extract_covariates(cover_prop_raster, where = 'end') %>%
   extract_covariates(crop_prop_raster, where = 'end') %>%

@@ -19,11 +19,11 @@ for(i in c('crop', 'cover', 'hab')) {
   iteration <- 0
   # Initiate df
   mod_outs <- data.frame()
-  for(mods in list.files('output/model_boots/', pattern = i)) {
+  for(mods in list.files('alt_output/model_boots/', pattern = i)) {
     # Increase iteration number
     iteration <- iteration + 1
     # Load model
-    out_mod <- readRDS(paste('output/model_boots/', mods, sep =''))
+    out_mod <- readRDS(paste('alt_output/model_boots/', mods, sep =''))
     # Tidy the model
     mod_tidy <- broom.mixed::tidy(out_mod) %>%
       # Remove random effects and intercept term
@@ -56,8 +56,8 @@ hab_mod_outs$term <- factor(hab_mod_outs$term, labels = c('cos(TA)', 'Cover',
                                                           'Crop', 'log(SL)'))
   
 # Save model data
-saveRDS(all_mods, 'output/model_results_crop-cov.rds')
-saveRDS(hab_mod_outs, 'output/model_results_hab.rds')
+saveRDS(all_mods, 'alt_output/model_results_crop-cov.rds')
+saveRDS(hab_mod_outs, 'alt_output/model_results_hab.rds')
 
 # Summarize effect sizes (± 95% CI)
 mod_summs <- all_mods %>%

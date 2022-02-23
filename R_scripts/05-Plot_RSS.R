@@ -15,10 +15,8 @@
 library(tidyverse)
 library(ggplot2)
 
-# Load models
-crop_model <- readRDS('output/crop_model_results.rds')
-cover_model <- readRDS('output/cover_model_results.rds')
-model_dat <- readRDS('output/model_dat.rds')
+# Load model data for calculating x ranges
+model_dat <- readRDS('alt_output/model_dat.rds')
 
 # Set median and max cort from all data
 med_cort <- median(model_dat$cort_ng_g_sc, na.rm = T)
@@ -29,6 +27,7 @@ mean_ta <- mean(model_dat$cos_ta_, na.rm = T)
 mean_sl <- mean(model_dat$log_sl_)
 
 # Data frame for predicted data from loc x1
+# Maybe instead of max cort, mean of the max corts for all individuals?
 x1 <- data.frame(cort_ng_g_sc = seq(from = med_cort, to = max_cort, 
                                     length.out = 100),
                       hab = 1,
@@ -48,14 +47,16 @@ for(i in c('cover', 'crop')) {
   # Set initial iteration
   iteration <- 0
   # Loop through each model separately
-  for(mods in list.files('output/model_boots/', pattern = i)) {
+  for(mods in list.files('alt_output/model_boots/', pattern = i)) {
     # Increase iteration number
     iteration <- iteration + 1
+    # Print iteration
+    print(iteration)
     # Rename hab column as habitat name
     colnames(x1)[2] <- paste(i)
     colnames(x2)[2] <- paste(i)
     # Get the appropriate model
-    rss_mod <- readRDS(paste('output/model_boots/', mods, sep = ''))
+    rss_mod <- readRDS(paste('alt_output/model_boots/', mods, sep = ''))
     # Calculate log RSS between loc x1 and x2
     for(j in c('pre', 'post')) {
       x1 <- x1 %>% 
@@ -92,14 +93,17 @@ for(i in c('cover', 'crop')) {
 # Bind together
 all_rss <- cover_mod_rss %>%
   rbind(crop_mod_rss) %>%
-# Calculate median and CI of RSS
+# Calculate median and CI of RSS for bootstrap
   group_by(period, habitat, cort) %>%
-  summarize(selection = median(logRSS),
+  summarize(selection = mean(logRSS),
             lower = quantile(logRSS, probs = 0.05),
-            upper = quantile(logRSS, probs = 0.95))
+            upper = quantile(logRSS, probs = 0.95)) %>%
+  filter(! cort > 5.5)
 
 # Save RSS data
-saveRDS(all_rss, 'output/rss_results.rds')
+saveRDS(all_rss, 'alt_output/rss_results.rds')
+saveRDS(crop_mod_rss, 'alt_output/crop_rss.rds')
+saveRDS(cover_mod_rss, 'alt_output/cover_rss.rds')
 
 # Plot
 # tiff('figures/rss_gc_habitat.tiff', width = 10, height = 8, units = 'in', res = 300)
@@ -108,7 +112,7 @@ ggplot(all_rss, aes(x = cort, y = exp(selection), group = period, col = period))
   scale_colour_manual(values = c('#e4bb3f', '#5ac18e')) +
   scale_fill_manual(values = c('#e4bb3f', '#5ac18e')) +
   geom_ribbon(alpha = 0.3, col = NA,
-              aes(ymin = exp(selection) - exp(lower), 
+              aes(ymin = exp(selection) - exp(lower),
                   ymax = exp(selection) + exp(upper), fill = period)) +
   geom_line(size = 1) +
   theme(panel.background = element_rect(colour = 'black', fill = 'white'),

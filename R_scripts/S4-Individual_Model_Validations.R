@@ -1,7 +1,8 @@
 
 #################################################
 ###                                           ###
-### Validate models using UHC plots           ###
+### Validate individual models using UHC      ###
+### plots                                     ###
 ###                                           ###
 ### Fit model to only individuals with both   ###
 ### pre- and post-calving data                ###
@@ -29,8 +30,8 @@ if(! file.exists('output/uhc_validation_df.rds')) {
       for(i in c(15, 16, 19, 21, 23, 28)) {
         
         try({
-          model_val <- uhc_validate(dat = dat, calv_period = per, 
-                                    model_form = form, elk_id = paste0('ER_E_', i))
+          model_val <- uhc_validate(dat = dat, calv_period = per, model_form = form, 
+                                    elk_id = paste0('ER_E_', i), n_iterations = 1000)
         })
         
         model_val_df <- rbind(model_val_df, model_val)
@@ -88,7 +89,7 @@ for(i in 1:nrow(combs)) {
 y_lab <- grid::textGrob(label = 'Density', rot = 90, gp = grid::gpar(fontsize = 22))
 marg <- grid::textGrob(label = '', gp = grid::gpar(fontsize = 20))
 
-tiff('figures/post-calv_val.tiff', width = 17, height = 10, units = 'in', res = 300)
+# tiff('figures/post-calv_val.tiff', width = 17, height = 10, units = 'in', res = 300)
 gridExtra::grid.arrange(y_lab, uhc_p_list$`crop-post_calv`[[1]], 
                         uhc_p_list$`crop:cort_ng_g_sc-post_calv`[[1]],
                         marg, uhc_p_list$`cover-post_calv`[[1]], 
@@ -97,7 +98,7 @@ gridExtra::grid.arrange(y_lab, uhc_p_list$`crop-post_calv`[[1]],
 
 dev.off()
 
-tiff('figures/pre-calv_val.tiff', width = 17, height = 10, units = 'in', res = 300)
+# tiff('figures/pre-calv_val.tiff', width = 17, height = 10, units = 'in', res = 300)
 gridExtra::grid.arrange(y_lab, uhc_p_list$`crop-pre_calv`[[1]], 
                         uhc_p_list$`crop:cort_ng_g_sc-pre_calv`[[1]],
                         marg, uhc_p_list$`cover-pre_calv`[[1]], 
