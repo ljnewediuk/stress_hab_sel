@@ -23,7 +23,6 @@
 library(sf)
 library(tidyverse)
 library(uhcplots)
-library(survival)
 
 # Required columns:
 #   id, period, case_, step_id_, cover, crop, cort_ng_g_sc, log_sl_, cos_ta_
@@ -48,12 +47,12 @@ uhc_validate_re <- function(dat, calv_period, model_form, n_iterations) {
   # Name of covariates including main effects only
   covs_no_ranef <- covs[1:(length(covs)-2)]
   
-  # Rename cases and strata to fit function variables
+  # Rename cases and strata for function variables, add id-stratum for sampling
   indiv_dat <- dat %>%
-    mutate(presence = ifelse(case_ == TRUE, 1, 0)) %>%
-    rename('stratum' = step_id_)
+    rename('stratum' = step_id_) %>%
+    mutate(presence = ifelse(case_ == TRUE, 1, 0))
   
-  # Separate into training/testing data (2/3 training, 1/3 testing)
+  # Separate into training/testing data stratified by individuals/strata
   train.steps <- sample(unique(indiv_dat$stratum), ceiling(length(unique(indiv_dat$stratum))/2))
   test.steps <- unique(indiv_dat$stratum)[! unique(indiv_dat$stratum) %in% train.steps]
   mdat.train <- indiv_dat %>%
@@ -67,6 +66,8 @@ uhc_validate_re <- function(dat, calv_period, model_form, n_iterations) {
   form2a <- reformulate(c(covs_no_ranef, -1))
   
   # Fit training model
+  # Attach glmmTMB
+  library(glmmTMB)
   # Set N iterations
   glmmTMBControl(optCtrl=list(iter.max=1e15,eval.max=1e15))
   # Set up model without fitting

@@ -19,7 +19,7 @@ library(sf)
 library(tidyverse)
 
 # Load data
-model_dat <- readRDS('alt_output/model_dat.rds') %>%
+model_dat <- readRDS('output/model_dat.rds') %>%
   na.omit() %>%
   # Factor pre- and post-calving periods
   mutate(period = factor(period, 
@@ -49,13 +49,13 @@ crop_covs <- c('cort_ng_g_sc:crop:period', 'cort_ng_g_sc:crop',
                 '(1 | step_id_)', '(0 + cort_ng_g_sc + crop | id)')
 
 # Create folder to store bootstrap samples
-if(!dir.exists('alt_output/model_boots')) dir.create('alt_output/model_boots')
+if(!dir.exists('output/model_boots')) dir.create('output/model_boots')
 
 # Set number of iterations
 it_n <- 1000
 
 # Set start iteration to zero or next iteration
-existing_its <- list.files('alt_output/model_boots')
+existing_its <- list.files('output/model_boots')
 iteration <- ifelse(length(existing_its) == 0, 0, 
                     max(as.numeric(str_extract_all(existing_its, '[0-9]+'))))
 
@@ -87,7 +87,7 @@ repeat {
     model_fit <- glmmTMB:::fitTMB(model_form)
     
     # Save models
-    saveRDS(model_fit, paste('alt_output/model_boots/', 
+    saveRDS(model_fit, paste('output/model_boots/', 
                              paste(i, 'model', iteration, sep = '_'), 
                              '.rds', sep =''))
   }

@@ -90,14 +90,35 @@ if(file.exists('output/N_avail_df.rds')) {
   
 }
 
+# Factor covariates so they appear in order
+avail_samples <- avail_samples %>%
+  mutate(term = factor(term, levels = c('cover:cort_ng_g_sc', 
+                       'cover:cort_ng_g_sc:periodpost_calv', 'cos_ta_', 'cover',
+                       'cover:periodpost_calv', 'log_sl_'),
+                       labels = c('Cover:FGM', 'Post:Cover:FGM', 'cos(TA)',
+                                  'Cover', 'Post:Cover', 'log(SL)')))
+
 # Plot coefficient estimates by used:available points
+# tiff('figures/s_select_n_avail.tiff', width = 16, height = 9, units = 'in', res = 300)
 ggplot() +
   geom_pointrange(data = avail_samples, aes(x = factor(n_steps), y = estimate,
                                             ymin = estimate - std.error*2,
-                                            ymax = estimate + std.error*2)) +
+                                            ymax = estimate + std.error*2,
+                                            colour = factor(n_steps))) +
+  scale_colour_manual(values = c(rep('black', 5), rep('red', 5))) +
   geom_hline(yintercept = 0, linetype = 'dashed') +
-  facet_wrap(~ term, scales = 'free')
+  theme(panel.background = element_rect(colour = 'black', fill = 'white'),
+        plot.margin = unit(c(0.5, 0, 1, 1), 'cm'),
+        strip.background = element_rect(fill = 'white'),
+        strip.text = element_text(size = 15, colour = 'black'),
+        legend.position = 'none',
+        panel.grid = element_blank(),
+        axis.text = element_text(size = 15, colour = 'black'), 
+        axis.title.x = element_text(size = 18, colour = 'black', vjust = -5),
+        axis.title.y = element_text(size = 18, colour = 'black', vjust = 5)) +
+  facet_wrap(~ term, scales = 'free') +
+  xlab('Number of available steps') +
+  ylab('Coefficient estimate')
 
-avail_samples <- rbind(avail_samples, avail_samples2)
-
+dev.off()
 

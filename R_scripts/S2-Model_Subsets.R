@@ -1,10 +1,9 @@
 
 #################################################
 ###                                           ###
-### Validate models using UHC plots           ###
-###                                           ###
-### Fit model to only individuals with both   ###
-### pre- and post-calving data                ###
+### Fit Muff model to only individuals with   ###
+### data in both periods to ensure those      ###
+### individuals are not driving the pattern   ###
 ###                                           ###
 #################################################
 
@@ -14,57 +13,52 @@ library(survival)
 
 # Load data
 dat <- readRDS('output/model_dat.rds') %>%
-  na.omit() 
+  na.omit() %>%
+  # Filter only individuals with data in both periods
+  filter(id %in% c('ER_E_15', 'ER_E_16', 'ER_E_19', 
+                   'ER_E_21', 'ER_E_23', 'ER_E_28')) %>%
+  mutate(period = factor(period, levels = c('pre_calv', 'post_calv'),
+                         ordered = T))
 
-cover <- c('cover', 'cover:cort_ng_g_sc', 'log_sl_', 'cos_ta_')
-crop <-c('crop', 'crop:cort_ng_g_sc', 'log_sl_', 'cos_ta_')
+# Load glmmTMB
+library(glmmTMB)
 
-model_summs <- data.frame()
+# Set max iterations to 10^15 to aid convergence
+glmmTMBControl(optCtrl=list(iter.max=1e15,eval.max=1e15))
 
-for(i in c(15, 16, 19, 21, 23, 28)) {
-  for(per in c('pre_calv', 'post_calv')) {
-    for(covs in c('cover', 'crop')) {
-      
-      indiv <- paste0('ER_E_', i)
-      
-      indiv_dat <- dat %>%
-        filter(id == indiv & period == per)
-      
-      # Fit iSSA
-      try({
-        indiv_mod <- clogit(reformulate(c(get(covs), 'strata(step_id_)'), 'case_'), 
-                            data= indiv_dat)
-      })
-      
-      # Tidy
-      tidy_mod <- broom::tidy(indiv_mod) %>%
-        mutate(indiv, covs, per) %>%
-        select(indiv, covs, per, term, estimate, std.error)
-      
-      if(any(tidy_mod$std.error > 50)) next
-      
-      model_summs <- rbind(model_summs, tidy_mod)  
-      
-    }
-  }
-}
+# Define covariates for models
+# Cover model
+cover_covs <- c('cort_ng_g_sc:cover:period', 'cort_ng_g_sc:cover',
+                'cover:period', 'cover', 'log_sl_', 'cos_ta_',
+                '(1 | step_id_)', '(0 + cort_ng_g_sc + cover | id)')
+# Crop model
+crop_covs <- c('cort_ng_g_sc:crop:period', 'cort_ng_g_sc:crop', 
+               'crop:period', 'crop', 'log_sl_', 'cos_ta_',
+               '(1 | step_id_)', '(0 + cort_ng_g_sc + crop | id)')
 
-sub <- model_summs %>%
-  filter(covs == 'cover' & per == 'pre_calv')
-
-ggplot(data = model_summs, aes(x = term, y = estimate, group = indiv)) +
-  geom_point() +
-  # geom_errorbar(aes(ymin = estimate - std.error, ymax = estimate + std.error)) +
-  facet_grid(rows = vars(covs), cols = vars(per))
+for(i in c('crop', 'cover')) {
   
+  # Set up model without fitting
+model_form <- suppressWarnings(
+  glmmTMB(reformulate(get(paste0(i, '_covs')), response = 'case_'),
+          family = poisson(), 
+          map = list(theta = factor(c(NA, 1:3))),
+          data = dat, doFit = F))
+# Set variance of random intercept to 10^6
+model_form$parameters$theta[1] <- log(1e6)
+# Fit model using large fixed variance
+model_fit <- glmmTMB:::fitTMB(model_form)
 
+assign(paste0(i, '_model_out'), 
+       broom.mixed::tidy(model_fit) %>%
+         filter(term %in% c('crop', 'cover', 'crop:cort_ng_g_sc', 'cover:cort_ng_g_sc',
+                            'crop:period.L',  'crop:cort_ng_g_sc:period.L',
+                            'cover:period.L',  'cover:cort_ng_g_sc:period.L',
+                            'log_sl_', 'cos_ta_')) %>%
+         mutate(estimate = round(estimate, digits = 2),
+                CI_95 = paste0('(', round(estimate - std.error*1.96, digits = 2), ', ', 
+                               round(estimate + std.error*1.96, digits = 2), ')')) %>%
+         select(term, estimate, CI_95)) 
 
-
-
-
-
-
-
-
-
+}
 

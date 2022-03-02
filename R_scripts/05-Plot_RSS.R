@@ -16,7 +16,7 @@ library(tidyverse)
 library(ggplot2)
 
 # Load model data for calculating x ranges
-model_dat <- readRDS('alt_output/model_dat.rds')
+model_dat <- readRDS('output/model_dat.rds')
 
 # Set median and max cort from all data
 med_cort <- median(model_dat$cort_ng_g_sc, na.rm = T)
@@ -47,7 +47,7 @@ for(i in c('cover', 'crop')) {
   # Set initial iteration
   iteration <- 0
   # Loop through each model separately
-  for(mods in list.files('alt_output/model_boots/', pattern = i)) {
+  for(mods in list.files('output/model_boots/', pattern = i)) {
     # Increase iteration number
     iteration <- iteration + 1
     # Print iteration
@@ -56,7 +56,7 @@ for(i in c('cover', 'crop')) {
     colnames(x1)[2] <- paste(i)
     colnames(x2)[2] <- paste(i)
     # Get the appropriate model
-    rss_mod <- readRDS(paste('alt_output/model_boots/', mods, sep = ''))
+    rss_mod <- readRDS(paste('output/model_boots/', mods, sep = ''))
     # Calculate log RSS between loc x1 and x2
     for(j in c('pre', 'post')) {
       x1 <- x1 %>% 
@@ -101,9 +101,9 @@ all_rss <- cover_mod_rss %>%
   filter(! cort > 5.5)
 
 # Save RSS data
-saveRDS(all_rss, 'alt_output/rss_results.rds')
-saveRDS(crop_mod_rss, 'alt_output/crop_rss.rds')
-saveRDS(cover_mod_rss, 'alt_output/cover_rss.rds')
+saveRDS(all_rss, 'output/rss_results.rds')
+saveRDS(crop_mod_rss, 'output/crop_rss.rds')
+saveRDS(cover_mod_rss, 'output/cover_rss.rds')
 
 # Plot
 # tiff('figures/rss_gc_habitat.tiff', width = 10, height = 8, units = 'in', res = 300)
@@ -128,7 +128,7 @@ ggplot(all_rss, aes(x = cort, y = exp(selection), group = period, col = period))
         axis.title.x = element_text(size = 18, colour = 'black', vjust = -5),
         axis.title.y = element_text(size = 18, colour = 'black', vjust = 5)) +
   facet_wrap(~ habitat, scales = 'free') +
-  xlab('Fecal cortisol (microgram/g)') +
+  xlab('Fecal glucocorticoid metabolite (microgram/g)') +
   ylab('log-RSS for habitat')
 
 dev.off()

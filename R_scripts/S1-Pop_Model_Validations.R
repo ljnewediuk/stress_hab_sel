@@ -17,23 +17,31 @@ dat <- readRDS('output/model_dat.rds') %>%
   na.omit() 
 
 # Set seed value
-set.seed(3)
+set.seed(1)
 
 # Fit UHC for cover model
 cover_uhc <- uhc_validate_re(dat, calv_period = 'pre_calv', 
                              model_form = 'cover', n_iterations = 1000) %>%
   # Filter out covariate for step strata
-  filter(! covariate == '(1 | stratum)')
+  filter(! covariate == '(1 | stratum)') %>%
+  # Factor covariates
+  mutate(covariate = factor(covariate, 
+                            labels = c('Cover:FGM', 'Post:Cover:FGM', 'cos(TA)',
+                            'Cover', 'Post:Cover', 'log(SL)')))
 
 # UHC for crop model
 crop_uhc <- uhc_validate_re(dat, calv_period = 'pre_calv', 
                             model_form = 'crop', n_iterations = 1000) %>%
   # Filter out covariate for step strata
-  filter(! covariate == '(1 | stratum')
+  filter(! covariate == '(1 | stratum)') %>%
+  # Factor covariates
+  mutate(covariate = factor(covariate, 
+                            labels = c('Crop:FGM', 'Post:Crop:FGM', 'cos(TA)',
+                                       'Crop', 'Post:Crop', 'log(SL)')))
 
 # Save outputs
-saveRDS(cover_uhc, 'alt_output/cover_uhc.rds')
-saveRDS(crop_uhc, 'alt_output/crop_uhc.rds')
+saveRDS(cover_uhc, 'output/cover_uhc.rds')
+saveRDS(crop_uhc, 'output/crop_uhc.rds')
 
 # Fit and save plots
 for(i in c('crop', 'cover')) {
@@ -48,7 +56,9 @@ for(i in c('crop', 'cover')) {
     geom_line(aes(x = densavail_x, y = densavail_y), 
               colour = 'red', size = 1, linetype = 'dashed') +
     theme(plot.caption = element_text(size = 22, colour = 'black', hjust = 0.5),
-          axis.title = element_blank(),
+          plot.margin = unit(c(0.5, 0.5, 1, 1), 'cm'),
+          axis.title.x = element_text(size = 18, colour = 'black', vjust = -5),
+          axis.title.y = element_text(size = 18, colour = 'black', vjust = 5),
           panel.background = element_rect(fill = 'white'), 
           panel.grid = element_blank(),
           axis.line.x.bottom = element_line(size = 1, colour = 'black'),
@@ -56,10 +66,12 @@ for(i in c('crop', 'cover')) {
           axis.text = element_text(size = 16, colour = 'black'),
           strip.text = element_text(size = 16, colour = 'black'),
           strip.placement = 'inside') +
+    ylab('Density') +
+    xlab('Covariate value') +
     facet_wrap(~ covariate, scales = 'free', strip.position = 'left')
   
   ggsave(paste0('figures/uhc_', i, '.tif'), 
-         device = 'tiff', width = 12, height = 10, units = 'in', dpi = 300)
+         device = 'tiff', width = 13, height = 10, units = 'in', dpi = 300)
   
   
 }

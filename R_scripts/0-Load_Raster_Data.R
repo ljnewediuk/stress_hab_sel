@@ -39,7 +39,7 @@ geometry <- ee$Geometry$Rectangle(
 )
 
 # Create temporary output folder to save rasters
-system("mkdir ~/Documents/R-Projects/site_fidelity/output/temp/")
+system("mkdir ~/Documents/R-Projects/risk_behaviour_repro/output/temp/")
 
 # Import AAFC ACI and USDA CDL rasters from GEE
 for(i in c('15', '16', '17', '18', '19')){
@@ -73,13 +73,13 @@ for(i in c('15', '16', '17', '18', '19')){
 
 # Copy the temp folder to main files
 for(i in list.files(path='output/temp/', pattern='cdl')){
-  system(paste("cp ~/Documents/R-Projects/site_fidelity/output/temp/",
+  system(paste("cp ~/Documents/R-Projects/risk_behaviour_repro/output/temp/",
                i, " ~/Documents/Spatial*Data/Minnesota*Data/landcover/CDL/",
                sep=''))
 }
 
 for(i in list.files(path='output/temp/', pattern='aci')){
-  system(paste("cp ~/Documents/R-Projects/site_fidelity/output/temp/",
+  system(paste("cp ~/Documents/R-Projects/risk_behaviour_repro/output/temp/",
                i, " ~/Documents/Spatial*Data/Manitoba*Data/landcover/ACI/",
                sep=''))
 }
@@ -88,8 +88,5 @@ for(i in list.files(path='output/temp/', pattern='aci')){
 ee_clean_container(name = "rgee_backup", type = "drive")
 
 # Remove the temp directory
-system("rm -r ~/Documents/R-Projects/site_fidelity/output/temp/")
+system("rm -r ~/Documents/R-Projects/risk_behaviour_repro/output/temp/")
 
-# Subset just to cropland?
-# cropland <- aci
-# cropland[cropland > 122 & cropland > 122] <- NA

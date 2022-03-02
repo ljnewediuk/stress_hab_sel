@@ -25,7 +25,7 @@ if(!"vita_elk_lotek_feb_2016-july_2019_cleaned.rds" %in%
   source('R_functions/Clean_GPS_Data.R')
   
   # Load data from main files
-  system("mkdir ~/Documents/R-Projects/state-dependent_hs/input/temp/")
+  system("mkdir ~/Documents/R-Projects/risk_behaviour_repro/input/temp/")
   system(paste("cp ~/Documents/Elk*Data/Vita*Elk/Collar*data*raw/",
                "vita_elk_lotek_feb_2016-july_2019.csv ~/Documents/R-Projects/",
                "state-dependent_hs/input/temp/", sep=''))
@@ -34,7 +34,7 @@ if(!"vita_elk_lotek_feb_2016-july_2019_cleaned.rds" %in%
                "state-dependent_hs/input/temp/", sep=''))
   system(paste("cp ~/Documents/Elk*Data/Vita*Elk/Collar*data*raw/", 
                "collar_deployment_data.csv", 
-               " ~/Documents/R-Projects/state-dependent_hs/input/temp/", sep=''))
+               " ~/Documents/R-Projects/risk_behaviour_repro/input/temp/", sep=''))
   
   # Load data into environment
   lotek_dat <- read_csv('input/temp/vita_elk_lotek_feb_2016-july_2019.csv')
@@ -44,7 +44,7 @@ if(!"vita_elk_lotek_feb_2016-july_2019_cleaned.rds" %in%
   deploy_dat <- read_csv('input/temp/collar_deployment_data.csv')
   
   # Remove the temp directory
-  system("rm -r ~/Documents/R-Projects/state-dependent_hs/input/temp/")
+  system("rm -r ~/Documents/R-Projects/risk_behaviour_repro/input/temp/")
   
   # Join the location data to the deployment dates
   lotek_dat <- lotek_dat %>%

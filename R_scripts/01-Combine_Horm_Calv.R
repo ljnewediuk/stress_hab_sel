@@ -54,7 +54,7 @@ calv_dates <- calv_dates %>%
 # Plot cort ad mean cort over calving period by individual
 # (remove the two individuals with only 1/2 cort samples (ERE 31 and 20))
 # Plot
-tiff('figures/cort_calving_dates.tiff', width = 12, height = 10, units = 'in', res = 300)
+# tiff('figures/cort_calving_dates.tiff', width = 12, height = 10, units = 'in', res = 300)
 ggplot(dat[!dat$animal_ID %in% c('ER_E_20', 'ER_E_31') ,], aes(x = Jday, 
                 y = cort_ng_g/1000, 
                 group = animal_year)) +
@@ -78,7 +78,7 @@ ggplot(dat[!dat$animal_ID %in% c('ER_E_20', 'ER_E_31') ,], aes(x = Jday,
         axis.title.y = element_text(size = 18, vjust = 5),
         axis.title.x = element_text(size = 18, vjust = -5),
         legend.position = 'none') +
-  ylab('Fecal cortisol (microgram/g)') +
+  ylab('Fecal glucocorticoid metabolites (microgram/g)') +
   xlab('Ordinal day') +
   facet_wrap(~ animal_year)
 
