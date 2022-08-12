@@ -15,44 +15,69 @@
 ###                                           ###
 #################################################
 
-library(sf)
 library(tidyverse)
 
 # Load data
-model_dat <- readRDS('output/model_dat.rds') %>%
-  na.omit() %>%
-  # Factor pre- and post-calving periods
-  mutate(period = factor(period, 
-                         levels = c('pre_calv', 'post_calv'))) %>%
-  # Group for bootstraps 
-  # (IMPORTANT: loading glmmTMB first will interfere with cur_group_id() 
-  # function, preventing bootstrap from working. If glmmTMB is loaded, confirm 
-  # that each id x cort level was assigned to a different group.)
-  group_by(id, cort_ng_g) %>%
-  mutate(group_id = cur_group_id()) %>%
-  # Filter out elk with >3 GC samples
-  filter(! id %in% c('ER_E_31', 'ER_E_20'))
+model_dat <- readRDS('derived_data/issa_model_dat.rds') %>%
+  # na.omit() %>%
+  # Scale distance data
+  mutate(across(c(dist_to_crop, dist_to_cover, cort_ng_g), function(x) as.vector(scale(x))),
+         # Make the post-calving period only ~ 30 d when calf most vulnerable
+         period = ifelse(d_to_calv > 3 | d_to_calv < -30, 'pre', 'post'),
+         # Factor land cover
+         across(c(forest, crop, cover), factor),
+         # Add log(SL) and cos(TA)
+         log_sl_ = log(sl_ + 1),
+         cos_ta_ = cos(ta_))
 
 library(glmmTMB)
 
 # Set max iterations to 10^15 to aid convergence
 glmmTMBControl(optCtrl=list(iter.max=1e15,eval.max=1e15))
 
-# Define covariates for models
-# Cover model
-cover_covs <- c('cort_ng_g_sc:cover:period', 'cort_ng_g_sc:cover',
-              'cover:period', 'cover', 'log_sl_', 'cos_ta_',
-              '(1 | step_id_)', '(0 + cort_ng_g_sc + cover | id)')
-# Crop model
-crop_covs <- c('cort_ng_g_sc:crop:period', 'cort_ng_g_sc:crop', 
-                'crop:period', 'crop', 'log_sl_', 'cos_ta_',
-                '(1 | step_id_)', '(0 + cort_ng_g_sc + crop | id)')
+# Full model covariates
+model_covs <-  c('I(log_sl_)',
+                'dist_to_cover',
+                'dist_to_crop',
+                'dist_to_cover:cort_ng_g',
+                'dist_to_crop:cort_ng_g',
+                'dist_to_cover:cort_ng_g:period',
+                'dist_to_crop:cort_ng_g:period',
+                '(1 | step_id_)',
+                '(0 + I(log_sl_) | id)',
+                '(0 + dist_to_cover | id)',
+                '(0 + dist_to_cover:cort_ng_g |id)',
+                '(0 + dist_to_crop | id)',
+                '(0 + dist_to_crop:cort_ng_g |id)')
+
+# Set number of random parameters for mapping
+nvar_parm <- 5
+# Set up model without fitting
+model_form <- suppressWarnings(
+  glmmTMB(reformulate(model_covs, response = 'case_'),
+          family = poisson(), 
+          map = list(theta = factor(c(NA, 1:nvar_parm))),
+          data = model_dat, doFit = F))
+# Set variance of random intercept to 10^6
+model_form$parameters$theta[1] <- log(1e6)
+# Fit model using large fixed variance
+model_fit <- glmmTMB:::fitTMB(model_form)
+
+# Save model output
+saveRDS(model_fit, 'output/model_fit.rds')
+
+
+
+
+
+
+
 
 # Create folder to store bootstrap samples
 if(!dir.exists('output/model_boots')) dir.create('output/model_boots')
 
 # Set number of iterations
-it_n <- 1000
+it_n <- 500
 
 # Set start iteration to zero or next iteration
 existing_its <- list.files('output/model_boots')
@@ -65,16 +90,16 @@ repeat {
   # Set iteration
   iteration <- iteration + 1
   # Take bootstrap sample from data
-  boot_IDs <- data.frame(group_id = sample(unique(model_dat$group_id),
-                                           size = length(unique(model_dat$group_id)),
-                                           replace = T))
+  boot_IDs <- sample(unique(model_dat$uid), 
+                     size = (length(unique(model_dat$uid))-1), replace = F)
   # Build bootstrap dataframe
-  model_boot <- left_join(model_dat, boot_IDs)
+  model_boot <- model_dat %>%
+    filter(uid %in% boot_IDs)
   # Run models
-  for(i in c('crop', 'cover')) {
+  for(i in c('full')) {
     model_covs <- get(paste(i, 'covs', sep = '_'))
     # Set number of random parameters for mapping
-    nvar_parm <- ifelse(i %in% c('crop', 'cover'), 3, 1)
+    nvar_parm <- 5
     # Set up model without fitting
     model_form <- suppressWarnings(
       glmmTMB(reformulate(model_covs, response = 'case_'),
@@ -85,7 +110,9 @@ repeat {
     model_form$parameters$theta[1] <- log(1e6)
     # Fit model using large fixed variance
     model_fit <- glmmTMB:::fitTMB(model_form)
-    
+    #Skip to next iteration if convergence issues
+    if (inherits(model_fit, "warning")) cat('Model convergence issue; skipping')
+    if (inherits(model_fit, "warning")) next
     # Save models
     saveRDS(model_fit, paste('output/model_boots/', 
                              paste(i, 'model', iteration, sep = '_'), 
@@ -95,3 +122,4 @@ repeat {
   if(iteration == it_n) break
   
 }
+
