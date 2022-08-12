@@ -1,5 +1,6 @@
 
 library(tidyverse)
+library(glmmTMB)
 
 # Load RSS data
 RSS_dat <- readRDS('output/rss_preds.rds')
@@ -99,17 +100,27 @@ dev.off()
 
 # Plot GC-T3
 ggplot() +
-  geom_point(data = horm_dat, aes(y = cort_ng_g, x = t3_ng_g))
+  geom_point(size = 4, colour = '#e5e5e5', alpha = 0.8,
+             data = horm_dat, aes(y = cort_ng_g, x = t3_ng_g)) +
+  theme(panel.background = element_rect(colour = '#e5e5e5', fill = '#36454f'),
+        plot.background = element_rect(fill = '#36454f', colour = NA),
+        plot.margin = unit(c(0.5, 0.5, 1, 1), 'cm'),
+        panel.grid = element_blank(),
+        axis.text = element_text(size = 16, colour = '#e5e5e5'), 
+        axis.ticks = element_line(colour = '#e5e5e5'),
+        axis.title.x = element_text(size = 18, colour = '#e5e5e5', vjust = -5),
+        axis.title.y = element_text(size = 18, colour = '#e5e5e5', vjust = -5))
 
 # Plot NMDS
 ggplot() +
-  theme(legend.position = 'none',
-        panel.background = element_rect(colour = 'black', fill = 'white'),
-        panel.grid = element_blank(),
+  theme(panel.background = element_rect(colour = '#e5e5e5', fill = '#36454f'),
+        plot.background = element_rect(fill = '#36454f', colour = NA),
         plot.margin = unit(c(0.5, 0.5, 1, 1), 'cm'),
-        axis.text = element_text(size = 18, colour = 'black'),
-        axis.title.x = element_text(size = 18, colour = 'black', vjust = -4),
-        axis.title.y = element_text(size = 18, colour = 'black', vjust = 5)) +
+        panel.grid = element_blank(),
+        axis.text = element_text(size = 16, colour = '#e5e5e5'), 
+        axis.ticks = element_line(colour = '#e5e5e5'),
+        axis.title.x = element_text(size = 18, colour = '#e5e5e5', vjust = -5),
+        axis.title.y = element_text(size = 18, colour = '#e5e5e5', vjust = -5)) +
   # Add hulls (by individual)
   scale_colour_viridis_d() +
   geom_polygon(data = nmds_hull, fill = NA,
