@@ -2,11 +2,9 @@
 #################################################
 ###                                           ###
 ### Calculate relative selection strength     ###
-### for crop and cover habitats with          ###
+### for distance to cover with                ###
 ### change in cortisol levels, comparing the  ###
-### pre- and post-calving periods, using      ###
-### bootstrapped model coefficients to get    ###
-### median and 95% CI RSS                     ###
+### pre- and post-calving periods             ###      
 ###                                           ###
 ### Then, plot and visualize results          ###
 ###                                           ###

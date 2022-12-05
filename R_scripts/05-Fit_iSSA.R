@@ -1,17 +1,9 @@
 
 #################################################
 ###                                           ###
-### Fit models:                               ###
-### - Step length by pre- and post- calving   ###
-###   according to GC level                   ###
-### - Cover and crop habitats pre- and post-  ###
-###   calving according to GC levels          ###
-###                                           ###
-### Models are fit n times after resampling   ###
-### at cluster level (cluster = individual    ###
-### x gc level), and stored in                ###
-### 'output/model_boots/' for later           ###
-### 95% CI bootstrapping                      ###
+### Fit models for distance to cover based on ###
+### cort levels and period with respect to    ###
+### parturition date                          ###
 ###                                           ###
 #################################################
 

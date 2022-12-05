@@ -1,7 +1,10 @@
-# Script: Create RSF data with available and used points around samples
-#   - Estimate AKDE home ranges around pre- and post- location data
-#   - Sample available points
-#   - Save data for land cover extractions
+
+#################################################
+###                                           ###
+### Sample available points from MCP and      ###
+### steps for iSSA                            ###
+###                                           ###
+#################################################
 
 library(tidyverse)
 library(sf)
