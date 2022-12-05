@@ -46,8 +46,6 @@ horm_means <- dat %>%
 calv_dates <- calv_dates %>%
   # Filter only animals with data
   filter(animal_year %in% unique(horm_means$animal_year)) %>%
-  filter(! animal_year %in% 
-           c('ER_E_20_2019', 'ER_E_20_2020', 'ER_E_31_2019', 'ER_E_31_2020')) %>%
   # Add cols expected by ggplot
   mutate(Jday = 150, cort_ng_g = 1)
 
@@ -55,32 +53,39 @@ calv_dates <- calv_dates %>%
 # (remove the two individuals with only 1/2 cort samples (ERE 31 and 20))
 # Plot
 # tiff('figures/cort_calving_dates.tiff', width = 12, height = 10, units = 'in', res = 300)
-ggplot(dat[!dat$animal_ID %in% c('ER_E_20', 'ER_E_31') ,], aes(x = Jday, 
+ggplot(dat, aes(x = Jday, 
                 y = cort_ng_g/1000, 
                 group = animal_year)) +
   geom_rect(data = calv_dates,
-            aes(ymin = -Inf, ymax = Inf, xmin = -Inf, xmax = calved), 
-            fill = '#5ac18e30') +
+            aes(ymin = -Inf, ymax = Inf, xmin = -Inf, xmax = calved - 3), 
+            fill = '#3399ff70') +
   geom_rect(data = calv_dates,
-            aes(ymin = -Inf, ymax = Inf, xmin = calved, xmax = Inf),
-            fill = '#e4bb3f', alpha = 0.3) +
-  geom_point(size = 3, aes(shape = identification_type)) +
+            aes(ymin = -Inf, ymax = Inf, xmin = calved - 3, xmax = calved + 30),
+            fill = '#ff7f50', alpha = 0.7) +
+  geom_rect(data = calv_dates,
+            aes(ymin = -Inf, ymax = Inf, xmin = calved + 30, xmax = Inf),
+            fill = '#3399ff70') +
   geom_hline(data = 
-               horm_means[!horm_means$animal_ID %in% c('ER_E_20', 'ER_E_31') ,], 
+               horm_means, 
              aes(yintercept = mean_cort/1000),
-             linetype = 'dashed', alpha = 0.6) +
-  theme(panel.background = element_rect(colour = 'black', fill = 'white'),
+             linetype = 'dashed', alpha = 0.6, colour = '#525252') +
+  geom_point(size = 3, aes(shape = identification_type)) +
+  theme(panel.background = element_rect(colour = 'black', fill = 'white', size = 1),
         plot.margin = unit(c(0.5, 0.5, 1, 1), 'cm'),
         strip.background = element_rect(fill = 'white'),
-        strip.text = element_text(size = 15),
+        strip.text = element_text(size = 12, colour = 'black'),
         panel.grid = element_blank(),
-        axis.text = element_text(size = 15), 
-        axis.title.y = element_text(size = 18, vjust = 5),
-        axis.title.x = element_text(size = 18, vjust = -5),
+        axis.text = element_text(size = 12, colour = 'black'), 
+        axis.title.y = element_text(size = 14, vjust = 5, colour = 'black'),
+        axis.title.x = element_text(size = 14, vjust = -5, colour = 'black'),
         legend.position = 'none') +
-  ylab('Fecal glucocorticoid metabolites (microgram/g)') +
+  ylab('Fecal glucocorticoid metabolites (µ/g)') +
   xlab('Ordinal day') +
   facet_wrap(~ animal_year)
+
+# Save plot
+ggsave('figures/MS/cort_calving_dates.tiff', plot = last_plot(), 
+       dpi = 300, width = unit(8, 'cm'), height = unit(8, 'cm'), device = 'tiff')
 
 dev.off()
 
