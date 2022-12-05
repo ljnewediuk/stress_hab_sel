@@ -13,47 +13,47 @@ library(tidyverse)
 source('R_functions/Validate_UHC_RE.R')
 
 # Load data
-dat <- readRDS('output/model_dat.rds') %>%
-  na.omit() 
+dat <- readRDS('derived_data/issa_model_dat.rds') %>%
+  # na.omit() %>%
+  # Scale distance data
+  mutate(across(c(dist_to_cover, cort_ng_g), function(x) as.vector(scale(x))),
+         # Make the post-calving period only ~ 30 d when calf most vulnerable
+         period = ifelse(d_to_calv > 3 | d_to_calv < -16, 'pre', 'post'),
+         # Factor land cover
+         across(c(forest, crop, cover), factor),
+         # Add log(SL) and cos(TA)
+         log_sl_ = log(sl_ + 1),
+         cos_ta_ = cos(ta_))
 
 # Set seed value
 set.seed(1)
 
-# Fit UHC for cover model
-cover_uhc <- uhc_validate_re(dat, calv_period = 'pre_calv', 
-                             model_form = 'cover', n_iterations = 1000) %>%
-  # Filter out covariate for step strata
-  filter(! covariate == '(1 | stratum)') %>%
-  # Factor covariates
-  mutate(covariate = factor(covariate, 
-                            labels = c('Cover:FGM', 'Post:Cover:FGM', 'cos(TA)',
-                            'Cover', 'Post:Cover', 'log(SL)')))
+# Fit UHC for each covariate set
 
-# UHC for crop model
-crop_uhc <- uhc_validate_re(dat, calv_period = 'pre_calv', 
-                            model_form = 'crop', n_iterations = 1000) %>%
-  # Filter out covariate for step strata
-  filter(! covariate == '(1 | stratum)') %>%
-  # Factor covariates
-  mutate(covariate = factor(covariate, 
-                            labels = c('Crop:FGM', 'Post:Crop:FGM', 'cos(TA)',
-                                       'Crop', 'Post:Crop', 'log(SL)')))
+uhc_ests <- data.frame()
+
+for(i in c('full', 'cort_only', 'cover_only')) {
+  
+  uhc <- uhc_validate_re(dat, model_spec = i, n_iterations = 1000) %>%
+    # Filter out covariate for step strata
+    filter(covariate == 'dist_to_cover')
+  
+  uhc_ests <- rbind(uhc_ests, uhc)
+  
+}
 
 # Save outputs
-saveRDS(cover_uhc, 'output/cover_uhc.rds')
-saveRDS(crop_uhc, 'output/crop_uhc.rds')
+saveRDS(uhc_ests, 'output/uhc_models.rds')
 
 # Fit and save plots
-for(i in c('crop', 'cover')) {
-  
-  ggplot(get(paste0(i, '_uhc'))) +
+ggplot(uhc_ests[uhc_ests$model_spec == 'full' ,]) +
     # Plot predicted distribution at used points
     geom_ribbon(aes(x = densdat_x, ymin = densrand_l, ymax = densrand_h), 
                 alpha = 0.5) +
     # Plot actual distribution at used points
-    geom_line(aes(x = densdat_x, y = densdat_y), colour = 'black', size = 1) +
+    geom_line(aes(x = densdat_x, y = densdat_y), colour = 'black', size = 0.5) +
     # Plot available distribution at used points
-    geom_line(aes(x = densavail_x, y = densavail_y), 
+    geom_line(aes(x = densavail_x, y = densavail_y),
               colour = 'red', size = 1, linetype = 'dashed') +
     theme(plot.caption = element_text(size = 22, colour = 'black', hjust = 0.5),
           plot.margin = unit(c(0.5, 0.5, 1, 1), 'cm'),
@@ -67,13 +67,10 @@ for(i in c('crop', 'cover')) {
           strip.text = element_text(size = 16, colour = 'black'),
           strip.placement = 'inside') +
     ylab('Density') +
-    xlab('Covariate value') +
-    facet_wrap(~ covariate, scales = 'free', strip.position = 'left')
+    xlab('Distance to cover (scaled)')
+    # facet_wrap(~ model_spec, scales = 'free', nrow = 1, strip.position = 'left')
   
-  ggsave(paste0('figures/uhc_', i, '.tif'), 
-         device = 'tiff', width = 13, height = 10, units = 'in', dpi = 300)
-  
-  
-}
+  ggsave('figures/MS/uhc_plot.tiff', 
+         device = 'tiff', width = 6, height = 6, units = 'in', dpi = 300)
 
 dev.off()
