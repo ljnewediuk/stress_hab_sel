@@ -24,7 +24,7 @@ model_dat <- readRDS('derived_data/issa_model_dat.rds') %>%
          dist_to_cover_unsc = dist_to_cover,
          across(c(dist_to_crop, dist_to_cover, cort_ng_g), function(x) as.vector(scale(x))),
          # Make the post-calving period only ~ 30 d when calf most vulnerable
-         period = ifelse(d_to_calv > 3 | d_to_calv < -30, 'pre', 'post'),
+         period = ifelse(d_to_calv > 3 | d_to_calv < -16, 'pre', 'post'),
          # Factor land cover
          across(c(forest, crop, cover), factor),
          # Add log(SL) and cos(TA)
@@ -32,7 +32,8 @@ model_dat <- readRDS('derived_data/issa_model_dat.rds') %>%
          cos_ta_ = cos(ta_))
 
 # Set GC quantiles
-min_cort <- quantile(model_dat$cort_ng_g, probs = 0.1)
+min_cort <- quantile(model_dat$cort_ng_g, probs = 0.2)
+med_cort <- quantile(model_dat$cort_ng_g, probs = 0.5)
 max_cort <- quantile(model_dat$cort_ng_g, probs = 0.8)
 
 # Set values for habitat distances
@@ -57,7 +58,6 @@ x1 <- data.frame(cort_ng_g = seq(from = min_cort, to = max_cort,
                                  length.out = 100),
                  dist_to_crop = med_dist_crop,
                  step_id_ = NA,
-                 cos_ta_ = mean_ta,
                  log_sl_ = mean_sl,
                  id = NA) 
 # Data frame for predicted data from loc x2 (comparison to x1)
@@ -66,7 +66,7 @@ x2 <- x1 %>%
 
 # Loop to calculate RSS
 
-# Initiate df to collect results
+# Initiate dfs to collect results
 RSS_preds <- data.frame()
   # Calculate log RSS between loc x1 and x2
   for(per in c('pre', 'post')) {
@@ -84,8 +84,8 @@ RSS_preds <- data.frame()
       logp_2 <- predict(mod, newdata = x2, type = 'link', re.form = NA, se.fit = F)
       # Log RSS
       logRSS <- logp_1 - logp_2
-      # Assign predicted selection to new df for binding
       
+      # Assign predicted selection to new df for binding
       RSS_row <- data.frame(id = 1:100,
                             period = per, 
                             log_rss = logRSS,
@@ -94,6 +94,7 @@ RSS_preds <- data.frame()
                                        to = quantile(model_dat$cort_ng_g_unsc, probs = 0.8), 
                                        length.out = 100))
       RSS_preds <- rbind(RSS_preds, RSS_row)
+
     }
   }
 
@@ -102,3 +103,5 @@ RSS_dat <- RSS_preds %>% pivot_wider(names_from = distance_to_cover, values_from
 
 # Save RSS data for plotting
 saveRDS(RSS_dat, 'output/rss_preds.rds')
+
+
