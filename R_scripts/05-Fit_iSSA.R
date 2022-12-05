@@ -23,7 +23,7 @@ model_dat <- readRDS('derived_data/issa_model_dat.rds') %>%
   # Scale distance data
   mutate(across(c(dist_to_crop, dist_to_cover, cort_ng_g), function(x) as.vector(scale(x))),
          # Make the post-calving period only ~ 30 d when calf most vulnerable
-         period = ifelse(d_to_calv > 3 | d_to_calv < -30, 'pre', 'post'),
+         period = ifelse(d_to_calv > 3 | d_to_calv < -16, 'pre', 'post'),
          # Factor land cover
          across(c(forest, crop, cover), factor),
          # Add log(SL) and cos(TA)
@@ -38,20 +38,15 @@ glmmTMBControl(optCtrl=list(iter.max=1e15,eval.max=1e15))
 # Full model covariates
 model_covs <-  c('I(log_sl_)',
                 'dist_to_cover',
-                'dist_to_crop',
                 'dist_to_cover:cort_ng_g',
-                'dist_to_crop:cort_ng_g',
                 'dist_to_cover:cort_ng_g:period',
-                'dist_to_crop:cort_ng_g:period',
                 '(1 | step_id_)',
                 '(0 + I(log_sl_) | id)',
                 '(0 + dist_to_cover | id)',
-                '(0 + dist_to_cover:cort_ng_g |id)',
-                '(0 + dist_to_crop | id)',
-                '(0 + dist_to_crop:cort_ng_g |id)')
+                '(0 + dist_to_cover:cort_ng_g |id)')
 
 # Set number of random parameters for mapping
-nvar_parm <- 5
+nvar_parm <- 3
 # Set up model without fitting
 model_form <- suppressWarnings(
   glmmTMB(reformulate(model_covs, response = 'case_'),
