@@ -56,20 +56,13 @@ calv_dates <- calv_dates %>%
 ggplot(dat, aes(x = Jday, 
                 y = cort_ng_g/1000, 
                 group = animal_year)) +
-  geom_rect(data = calv_dates,
-            aes(ymin = -Inf, ymax = Inf, xmin = -Inf, xmax = calved - 3), 
-            fill = '#3399ff70') +
-  geom_rect(data = calv_dates,
-            aes(ymin = -Inf, ymax = Inf, xmin = calved - 3, xmax = calved + 30),
-            fill = '#ff7f50', alpha = 0.7) +
-  geom_rect(data = calv_dates,
-            aes(ymin = -Inf, ymax = Inf, xmin = calved + 30, xmax = Inf),
-            fill = '#3399ff70') +
+  geom_vline(data = calv_dates, aes(xintercept = calved), colour = 'black') +
   geom_hline(data = 
                horm_means, 
              aes(yintercept = mean_cort/1000),
              linetype = 'dashed', alpha = 0.6, colour = '#525252') +
-  geom_point(size = 3, aes(shape = identification_type)) +
+  geom_point(size = 3, aes(shape = identification_type), fill = '#00000050') +
+  scale_shape_manual(values = c(21, 24)) +
   theme(panel.background = element_rect(colour = 'black', fill = 'white', size = 1),
         plot.margin = unit(c(0.5, 0.5, 1, 1), 'cm'),
         strip.background = element_rect(fill = 'white'),
