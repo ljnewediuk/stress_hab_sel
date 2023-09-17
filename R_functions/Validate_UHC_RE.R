@@ -25,43 +25,29 @@ library(tidyverse)
 library(uhcplots)
 
 # Required columns:
-#   id, period, case_, step_id_, dist_to_cover, cort_ng_g_sc, log_sl_
+#   id, period, case_, step_id_, dist_to_cover, cort_ng_g_sc
 # Arguments:
 #   - Data: Name of data frame
 #   - Number of iterations: How many simulation envelopes to run
 #   - Model specification: 
 #       - "full": Contains all covariates
-#       - "cort_only": All covariates without period interaction
-#       - "cover_only": Only distance to cover
 
 uhc_validate_re <- function(dat, model_spec, n_iterations) {
   
   # Name covariates
-  full_covs <-  c('I(log_sl_)',
-                  'dist_to_cover',
+  full_covs <-  c('dist_to_cover',
                   'dist_to_cover:cort_ng_g',
                   'dist_to_cover:cort_ng_g:period',
+                  'dist_to_cover:cort_ng_g:d_to_calv',
                   '(1 | stratum)',
-                  '(0 + I(log_sl_) | id)',
                   '(0 + dist_to_cover | id)',
-                  '(0 + dist_to_cover:cort_ng_g |id)')
+                  '(0 + dist_to_cover:cort_ng_g |id)',
+                  '(0 + dist_to_cover:cort_ng_g:d_to_calv |id)')
   
   # Name of covariates and covariates including main effects only
-  if(model_spec == 'full') {
     covs <- full_covs
     covs_no_ranef <- covs[1:(length(covs) - 4)]
     nvar_parm <- 3
-  }
-  if(model_spec == 'cort_only') {
-    covs <- full_covs[ -4]
-    covs_no_ranef <- covs[1:(length(covs) - 4)]
-    nvar_parm <- 3
-  }
-  if(model_spec == 'cover_only') {
-    covs <- full_covs[ -c(3, 4, 8)]
-    covs_no_ranef <- covs[1:(length(covs) - 3)]
-    nvar_parm <- 2
-  }
   
   # Rename cases and strata for function variables, add id-stratum for sampling
   indiv_dat <- dat %>%
