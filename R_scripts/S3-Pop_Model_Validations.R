@@ -9,44 +9,26 @@
 library(sf)
 library(tidyverse)
 
+
 # Source validation function
 source('R_functions/Validate_UHC_RE.R')
 
 # Load data
 dat <- readRDS('derived_data/issa_model_dat.rds') %>%
-  # na.omit() %>%
   # Scale distance data
-  mutate(across(c(dist_to_cover, cort_ng_g), function(x) as.vector(scale(x))),
-         # Make the post-calving period only ~ 30 d when calf most vulnerable
-         period = ifelse(d_to_calv > 3 | d_to_calv < -16, 'pre', 'post'),
-         # Factor land cover
-         across(c(forest, crop, cover), factor),
-         # Add log(SL) and cos(TA)
-         log_sl_ = log(sl_ + 1),
-         cos_ta_ = cos(ta_))
+  mutate(across(c(dist_to_cover, cort_ng_g), function(x) as.vector(scale(x))))
 
 # Set seed value
 set.seed(1)
 
-# Fit UHC for each covariate set
-
-uhc_ests <- data.frame()
-
-for(i in c('full', 'cort_only', 'cover_only')) {
-  
-  uhc <- uhc_validate_re(dat, model_spec = i, n_iterations = 1000) %>%
-    # Filter out covariate for step strata
-    filter(covariate == 'dist_to_cover')
-  
-  uhc_ests <- rbind(uhc_ests, uhc)
-  
-}
+# Fit UHC
+uhc <- uhc_validate_re(dat, model_spec = 'full', n_iterations = 1000)
 
 # Save outputs
-saveRDS(uhc_ests, 'output/uhc_models.rds')
+saveRDS(uhc, 'output/uhc_models.rds')
 
 # Fit and save plots
-ggplot(uhc_ests[uhc_ests$model_spec == 'full' ,]) +
+ggplot(uhc[uhc$covariate == 'dist_to_cover' ,]) +
     # Plot predicted distribution at used points
     geom_ribbon(aes(x = densdat_x, ymin = densrand_l, ymax = densrand_h), 
                 alpha = 0.5) +
@@ -68,9 +50,9 @@ ggplot(uhc_ests[uhc_ests$model_spec == 'full' ,]) +
           strip.placement = 'inside') +
     ylab('Density') +
     xlab('Distance to cover (scaled)')
-    # facet_wrap(~ model_spec, scales = 'free', nrow = 1, strip.position = 'left')
+    # facet_wrap(~ covariate, scales = 'free', nrow = 2, strip.position = 'left')
   
   ggsave('figures/MS/uhc_plot.tiff', 
-         device = 'tiff', width = 6, height = 6, units = 'in', dpi = 300)
+         device = 'tiff', width = 8, height = 7, units = 'in', dpi = 300)
 
 dev.off()
