@@ -23,11 +23,11 @@ issa_dat <- dat %>%
                           uid, cort_ng_g, t3_ng_g, period, d_to_calv,
                           crs = sp::CRS("+init=epsg:26914")) %>%
   # Extract random steps (40 available/used)
-  track_resample(rate=minutes(30), tolerance=minutes(5)) %>%
+  amt::track_resample(rate=minutes(30), tolerance=minutes(5)) %>%
   # Make sure bursts have at least three points
-  filter_min_n_burst(min_n = 3) %>% 
-  steps_by_burst(keep_cols = 'start') %>%
-  random_steps(n = 40)
+  amt::filter_min_n_burst(min_n = 3) %>% 
+  amt::steps_by_burst(keep_cols = 'start') %>%
+  amt::random_steps(n = 40)
 
 # Sample available points from MCP for RSFs
 rsf_dat <- data.frame()
