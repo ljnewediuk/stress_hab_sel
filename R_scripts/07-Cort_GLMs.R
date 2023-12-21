@@ -8,13 +8,17 @@
 
 library(tidyverse)
 library(brms)
+library(emmeans)
+library(tidybayes)
+library(performance)
+library(bayestestR)
 
 # Load hormone data with calving dates
 dat <- readRDS('output/horm_calv_dat.rds') %>%
   mutate(cort_ng_g_sc = scale(cort_ng_g)[,1])
 
 # Fit model to test if glucocorticoids higher or lower after calving
-mod <- brm(cort_ng_g_sc ~ period + (1 | animal_ID),
+mod <- brm(cort_ng_g_sc ~ period + factor(year) + (1 | animal_ID),
            data = dat, family = gaussian, 
            iter = 10000, warmup = 5000, chains = 4, cores = 4, 
            prior = prior(normal(0,1), class = b),
